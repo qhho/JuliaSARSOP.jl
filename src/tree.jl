@@ -12,7 +12,7 @@ struct SARSOPTree{S,A,O}
 
     _discount::Float64
 
-    function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
+    function SARSOPTree{S,A,O}(pomdp::POMDP) where {S,A,O}
         return new(
             ordered_states(pomdp),
             Vector{Float64}[],
