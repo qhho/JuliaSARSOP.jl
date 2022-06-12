@@ -1,4 +1,4 @@
-struct SARSOPSolver
+struct SARSOPSolver <: Solver
     epsilon::Float64
     kappa::Float64
     max_time::Float64
