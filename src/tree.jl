@@ -17,33 +17,32 @@ struct SARSOPTree{S,A,O,UPD}
 
     updater::UPD
     cache::SARSOPCache
-
-    function SARSOPTree{S,A,O}(pomdp::POMDP) where {S,A,O}
-        solver = ValueIterationSolver()
-        upper_policy = solve(solver, UnderlyingMDP(pomdp))
-        upper_values = upper_policy.util
-        not_terminals = [stateindex(pomdp, s) for s in states(pomdp) if !isterminal(pomdp, s)]
-        terminals = [stateindex(pomdp, s) for s in states(pomdp) if isterminal(pomdp, s)]
-        obs = ordered_observations(pomdp)
-
-        return new(
-            ordered_states(pomdp),
-            Vector{Float64}[],
-            Vector{Pair{A,Int}}[],
-            upper_values,
-            Float64[],
-            obs,
-            Vector{Pair{O,Int}}[],
-            ordered_actions(pomdp),
-            discount(pomdp),
-            not_terminals,
-            terminals,
-            SARSOPCache(length(obs))
-        )
-    end
 end
 
-SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O} = SARSOPTree{S,A,O}(pomdp)
+function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
+    solver = ValueIterationSolver()
+    upper_policy = solve(solver, UnderlyingMDP(pomdp))
+    upper_values = upper_policy.util
+    not_terminals = Int[stateindex(pomdp, s) for s in states(pomdp) if !isterminal(pomdp, s)]
+    terminals = Int[stateindex(pomdp, s) for s in states(pomdp) if isterminal(pomdp, s)]
+    obs = ordered_observations(pomdp)
+
+    return SARSOPTree(
+        ordered_states(pomdp),
+        Vector{Float64}[],
+        Vector{Pair{A,Int}}[],
+        upper_values,
+        Float64[],
+        obs,
+        Vector{Pair{O,Int}}[],
+        ordered_actions(pomdp),
+        discount(pomdp),
+        not_terminals,
+        terminals,
+        DiscreteUpdater(pomdp),
+        SARSOPCache(length(obs))
+    )
+end
 
 function BeliefUpdaters.update(tree::SARSOPTree, b_idx, a, o)
     b = tree.b[b_idx]
