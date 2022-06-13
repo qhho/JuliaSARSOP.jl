@@ -1,4 +1,7 @@
-function sample(sol::SARSOPSolver, tree::SARSOPTree{S,A}, b_idx::Int, L, U, t) where {S,A}
+function sample(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
+    V̲, V̄ = tree.V_lower[b_idx], tree.V_upper[b_idx]
+    ϵ = sol.epsilon
+    γ = tree._discount
 
     if V̂ ≤ L && V̄ ≤ max(U, V̲ + ϵ*γ^(-t))
         return
@@ -12,9 +15,7 @@ function sample(sol::SARSOPSolver, tree::SARSOPTree{S,A}, b_idx::Int, L, U, t) w
 
         Lt, Ut = get_LtUt(tree, b_idx, ap_idx, Rba, L′, U′, op_idx, op)
 
-        b′ = update(tree.updater, b, a, o)
-        bp_idx = length(tree.b) + 1
-        add_belief!(tree, b′, ap_idx, op)
+        bp_idx = update(tree, b_idx, a, o)
 
         sample(sol, tree, bp_idx, Lt, Ut, t+1)
     end
@@ -54,7 +55,7 @@ function q_bounds(tree::SARSOPTree, b_idx::Int, ba_idx::Int)
 
     for (o_idx, o) in enumerate(O)
         poba = obs_prob(o, b, a)
-        bp_idx = tree.ba_children[ba_idx][o_idx]
+        bp_idx = ba_child(tree, ba_idx, o)
         V̲ = tree.V_lower[bp_idx]
         V̄ = tree.V_upper[bp_idx]
         EV̲b′ += poba*V̲
@@ -69,8 +70,8 @@ function best_obs(tree::SARSOPTree, b_idx, ba_idx)
     b = tree.b[b_idx]
     a = tree.a[a_idx]
 
-    S = ordered_states(pomdp)
-    O = ordered_observations(pomdp)
+    S = tree.states
+    O = tree.obs
 
     best_o_idx = 0
     best_o = first(O)
@@ -78,7 +79,7 @@ function best_obs(tree::SARSOPTree, b_idx, ba_idx)
 
     for (o_idx,o) in O
         poba = obs_prob(o, b, a)
-        bp_idx = tree.ba_children[ba_idx][o_idx]
+        bp_idx = ba_child(tree, ba_idx, o)
 
         gap = poba*(tree.V_upper[bp_idx] - tree.V_lower[bp_idx])
 
@@ -107,7 +108,7 @@ function get_LtUt(tree, b_idx, ba_idx, Rba, L′, U′, op_idx, op)
 
     for (o_idx, o) in enumerate(ordered_observations(pomdp))
         if op_idx != o_idx
-            bp_idx = tree.ba_children[ba_idx][o_idx]
+            bp_idx = ba_child(tree, ba_idx, o)
             V̲ = tree.V_lower[bp_idx]
             V̄ = tree.V_upper[bp_idx]
             poba = obs_prob(o,b,a)

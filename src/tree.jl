@@ -1,4 +1,4 @@
-struct SARSOPTree{S,A,O}
+struct SARSOPTree{S,A,O,UPD}
     states::Vector{S}
     b::Vector{Vector{Float64}}
     b_children::Vector{Vector{Pair{A,Int}}}
@@ -15,6 +15,7 @@ struct SARSOPTree{S,A,O}
     not_terminals::Vector{Int}
     terminals::Vector{Int}
 
+    updater::UPD
     cache::SARSOPCache
 
     function SARSOPTree{S,A,O}(pomdp::POMDP) where {S,A,O}
@@ -44,18 +45,22 @@ end
 
 SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O} = SARSOPTree{S,A,O}(pomdp)
 
-struct SARSOPCache
-    poba::Vector{Float64}
-end
-
-SARSOPCache(l::Int) = SARSOPCache(Vector{Float64}(undef, l))
-
-function ba_child(tree::SARSOPTree{S,A,O}, ba_idx::Int, o::O) where {S,A,O}
-    children = tree.ba_children[ba_idx]
-    for (o′, bp_idx) in children
-        o′ == o && return bp_idx
+function BeliefUpdaters.update(tree::SARSOPTree, b_idx, a, o)
+    b = tree.b[b_idx]
+    ba_idx = b_child(tree, b_idx, a)
+    bp_idx = -1
+    if ba_idx === -1
+        add_action!(tree, b_idx, a)
+        b′ = update(tree.updater, b, a, o)
+        bp_idx = add_belief!(tree, b′, ba_idx, o)
+    else
+        bp_idx = ba_child(tree, ba_idx, o)
+        if bp_idx === -1
+            b′ = update(tree.updater, b, a, o)
+            bp_idx = add_belief!(tree, b′, ba_idx, o)
+        end
     end
-    return -1 # child not found
+    return bp_idx
 end
 
 function b_child(tree::SARSOPTree{S,A,O}, b_idx::Int, a::A) where {S,A,O}
@@ -66,13 +71,23 @@ function b_child(tree::SARSOPTree{S,A,O}, b_idx::Int, a::A) where {S,A,O}
     return -1 # child not found
 end
 
+function ba_child(tree::SARSOPTree{S,A,O}, ba_idx::Int, o::O) where {S,A,O}
+    children = tree.ba_children[ba_idx]
+    for (o′, bp_idx) in children
+        o′ == o && return bp_idx
+    end
+    return -1 # child not found
+end
+
 function add_belief!(tree::SARSOPTree, b, ba_idx, o) # TODO: instantiate value bounds
     push!(tree.b, b)
     b_idx = length(tree.b)
     push!(tree.ba_children[ba_idx], o=>b_idx)
+    return b_idx
 end
 
 function add_action!(tree::SARSOPTree, b_idx, a)
     ba_idx = length(tree.ba_children) + 1
     push!(tree.b_children[b_idx], a=>ba_idx)
+    return ba_idx
 end
