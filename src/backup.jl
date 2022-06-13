@@ -57,13 +57,14 @@ function backup_belief(tree::SARSOPTree, Γ::Vector{AlphaVec}, node::Int)
     end
 
     val,idx = findmax(map(αa -> αa ⋅ b, Γa))
-    alphavec =  AlphaVec(Γa[idx],A[idx],node,val)
+    alphavec = AlphaVec(Γa[idx],A[idx],node,val)
 
     return alphavec
 end
 
-function tree_backup!(tree::SARSOPTree, Γ::Vector{AlphaVec})
-    for node in tree.b_touched
-        push!(Γ,backup_belief(tree, Γ, tree.b[node]))
+function tree_backup!(Γnew::Vector{AlphaVec}, Γold::Vector{AlphaVec}, tree::SARSOPTree)
+    resize!(Γnew,tree.b_touched)
+    for (i,node) in enumerate(tree.b_touched)
+        Γnew[i] = backup_belief(tree, Γold, node)
     end
 end
