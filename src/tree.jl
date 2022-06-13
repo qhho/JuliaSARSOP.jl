@@ -1,13 +1,13 @@
 struct SARSOPTree{S,A,O}
     states::Vector{S}
     b::Vector{Vector{Float64}}
-    b_children::Dict{Tuple{Int,A}, Int} # (b_idx, a) => ba_idx
+    b_children::Vector{Vector{Pair{A,Int}}}
     V_upper::Vector{Float64}
     V_lower::Vector{Float64}
 
     obs::Vector{O}
 
-    ba_children::Dict{Tuple{Int,O}, Int} # (ba_idx, o) => bp_idx
+    ba_children::Vector{Vector{Pair{O,Int}}} # (ba_idx, o) => bp_idx
     ba_action::Vector{A}
 
     _discount::Float64
@@ -15,27 +15,64 @@ struct SARSOPTree{S,A,O}
     not_terminals::Vector{Int}
     terminals::Vector{Int}
 
+    cache::SARSOPCache
+
     function SARSOPTree{S,A,O}(pomdp::POMDP) where {S,A,O}
         solver = ValueIterationSolver()
         upper_policy = solve(solver, UnderlyingMDP(pomdp))
         upper_values = upper_policy.util
         not_terminals = [stateindex(pomdp, s) for s in states(pomdp) if !isterminal(pomdp, s)]
         terminals = [stateindex(pomdp, s) for s in states(pomdp) if isterminal(pomdp, s)]
+        obs = ordered_observations(pomdp)
 
         return new(
             ordered_states(pomdp),
             Vector{Float64}[],
-            Dict{Tuple{Int,A}, Int}(),
+            Vector{Pair{A,Int}}[],
             upper_values,
             Float64[],
-            ordered_observations(pomdp),
-            Dict{Tuple{Int,O}, Int}(),
+            obs,
+            Vector{Pair{O,Int}}[],
             ordered_actions(pomdp),
             discount(pomdp),
             not_terminals,
-            terminals
+            terminals,
+            SARSOPCache(length(obs))
         )
     end
 end
 
 SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O} = SARSOPTree{S,A,O}(pomdp)
+
+struct SARSOPCache
+    poba::Vector{Float64}
+end
+
+SARSOPCache(l::Int) = SARSOPCache(Vector{Float64}(undef, l))
+
+function ba_child(tree::SARSOPTree{S,A,O}, ba_idx::Int, o::O) where {S,A,O}
+    children = tree.ba_children[ba_idx]
+    for (o′, bp_idx) in children
+        o′ == o && return bp_idx
+    end
+    return -1 # child not found
+end
+
+function b_child(tree::SARSOPTree{S,A,O}, b_idx::Int, a::A) where {S,A,O}
+    children = tree.b_children[b_idx]
+    for (a′, ba_idx) in children
+        a′ == a && return ba_idx
+    end
+    return -1 # child not found
+end
+
+function add_belief!(tree::SARSOPTree, b, ba_idx, o) # TODO: instantiate value bounds
+    push!(tree.b, b)
+    b_idx = length(tree.b)
+    push!(tree.ba_children[ba_idx], o=>b_idx)
+end
+
+function add_action!(tree::SARSOPTree, b_idx, a)
+    ba_idx = length(tree.ba_children) + 1
+    push!(tree.b_children[b_idx], a=>ba_idx)
+end
