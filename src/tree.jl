@@ -12,10 +12,15 @@ struct SARSOPTree{S,A,O}
 
     _discount::Float64
 
+    not_terminals::Vector{Int}
+    terminals::Vector{Int}
+
     function SARSOPTree{S,A,O}(pomdp::POMDP) where {S,A,O}
         solver = ValueIterationSolver()
         upper_policy = solve(solver, UnderlyingMDP(pomdp))
         upper_values = upper_policy.util
+        not_terminals = [stateindex(pomdp, s) for s in S if !isterminal(pomdp, s)]
+        terminals = [stateindex(pomdp, s) for s in S if isterminal(pomdp, s)]
 
         return new(
             ordered_states(pomdp),
@@ -26,7 +31,9 @@ struct SARSOPTree{S,A,O}
             ordered_observations(pomdp),
             Vector{Int}[],
             ordered_actions(pomdp),
-            discount(pomdp)
+            discount(pomdp),
+            not_terminals,
+            terminals
         )
     end
 end
