@@ -62,8 +62,8 @@ function backup_belief(tree::SARSOPTree, Γ::Vector{AlphaVec}, node::Int)
     return alphavec
 end
 
-function tree_backup!(tree::SARSOPTree, Γ::Vector{AlphaVec})
+function tree_backup!(tree::SARSOPTree, Γold::Vector{AlphaVec},  Γnew::Vector{AlphaVec})
     for node in tree.b_touched
-        push!(Γ,backup_belief(tree, Γ, tree.b[node]))
+        push!(Γnew,backup_belief(tree, Γold, tree.b[node]))
     end
 end
