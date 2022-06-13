@@ -1,7 +1,6 @@
 function prune(tree::SARSOPTree, Γnew::Vector{AlphaVec}, Γold::Vector{AlphaVec})
     # prune from B points that are provably suboptimal
     # For node b in Tree, 
-
     pruneTree!(tree::SARSOPTree)
     Γnew = pruneAlpha(Γnew, Γold, δ)
 end
@@ -11,12 +10,13 @@ function pruneTree!(tree::SARSOPTree)
     for b_idx in tree.b_touched
         Qa_upper = Qa_upper[b_idx]
         Qa_lower = Qa_lower[b_idx]
-        b_children = tree.b_children[b_idx]
+        ba = tree.b_children[b_idx]
         for (idx, Qvals) in enumerate(zip(Qa_lower, Qa_upper))
-            b_children[Qvals[1].first]
-            for i in idx+1:length(Qa_upper)
-                if (Qa_upper[i].second < Qvals[1].second)
-                    
+            if (ba_children[ba[idx].second][1].second != 0) #assume deleted nodes are 0
+                for i in idx+1:length(Qa_upper)
+                    if (Qa_upper[i].second < Qvals[1].second)
+                        pushfirst!(ba_children[ba[i].second], Pair(tree.obs[1], 0)) # hacky method to set first element to deleted node
+                    end
                 end
             end
         end
