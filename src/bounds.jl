@@ -1,8 +1,8 @@
-function initUpperBound!(tree::SARSOPTree, values::Vector{Float64})
-    b0 = tree.b[1]
+function initUpperBound!(tree::SARSOPTree, b_idx::Int)
+    b = b[b_idx]
     tmp = 0.0
     for i in 1:length(values) 
-        tmp += values[i] * b0[i]
+        tmp += values[i] * b[i]
     end
     push!(tree.V_upper, tmp)
 end
@@ -14,7 +14,8 @@ end
 # Get upper bound value for each belief in tree
 function updateUpperBound!(tree::SARSOPTree)
     for b in tree.b
-        # DO sawtooth updating 
+        # DO sawtooth updating on remaining belief nodes
         nothing
     end
+    #tree.V_upper[b_idx] = tmp
 end

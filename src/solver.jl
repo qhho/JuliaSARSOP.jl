@@ -16,9 +16,7 @@ end
 function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP)
     tree = SARSOPTree(pomdp)
 
-    mdp_solver = ValueIterationSolver()
-    upper_policy = solve(mdp_solver, UnderlyingMDP(pomdp))
-    initUpperBound!(tree, upper_policy.util)
+    initUpperBound!(tree, 1)
     
     start_time = time()
     while time()-start_time < solver.max_time

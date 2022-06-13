@@ -2,6 +2,7 @@ struct SARSOPTree{S,A,O,UPD}
     states::Vector{S}
     b::Vector{Vector{Float64}}
     b_children::Vector{Vector{Pair{A,Int}}}
+    Vs_upper::Vector{Float64}
     V_upper::Vector{Float64}
     V_lower::Vector{Float64}
     Qa_upper::Vector{Vector{Pair{A, Float64}}}
@@ -24,6 +25,9 @@ struct SARSOPTree{S,A,O,UPD}
 end
 
 function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
+    mdp_solver = ValueIterationSolver()
+    upper_policy = solve(mdp_solver, UnderlyingMDP(pomdp))
+
     not_terminals = Int[stateindex(pomdp, s) for s in states(pomdp) if !isterminal(pomdp, s)]
     terminals = Int[stateindex(pomdp, s) for s in states(pomdp) if isterminal(pomdp, s)]
     obs = ordered_observations(pomdp)
@@ -32,6 +36,7 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         ordered_states(pomdp),
         Vector{Float64}[],
         Vector{Pair{A,Int}}[],
+        upper_policy.util,
         Float64[],
         Float64[],
         Vector{Pair{A, Float64}}[],
