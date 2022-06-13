@@ -24,7 +24,7 @@ function backup_belief(tree::SARSOPTree, Γ::AlphaVectorPolicy, b::Vector{Float6
 
     terminals = tree.terminals
     not_terminals = tree.not_terminals
-    
+
     for a in A
         Γao = Vector{Vector{Float64}}(undef, length(O))
         trans_probs = dropdims(sum([pdf(transition(pomdp, S[is], a), sp) * b[is] for sp in S, is in not_terminals], dims=2), dims=2)
@@ -38,7 +38,7 @@ function backup_belief(tree::SARSOPTree, Γ::AlphaVectorPolicy, b::Vector{Float6
             end
 
             # extract optimal alpha vector at resulting belief
-            Γao[obsindex(pomdp, o)] = _argmax(α -> α ⋅ b′.b, Γ)
+            Γao[obsindex(pomdp, o)] = _argmax(α -> α ⋅ b′, Γ)
         end
         
         for s in S

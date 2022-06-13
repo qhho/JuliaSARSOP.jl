@@ -1,6 +1,7 @@
 struct SARSOPSolver <: Solver
     epsilon::Float64
     kappa::Float64
+    delta::Float64
     max_time::Float64
     verbose::Bool
 end
