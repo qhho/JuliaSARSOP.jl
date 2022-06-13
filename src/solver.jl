@@ -1,9 +1,9 @@
-struct SARSOPSolver <: Solver
-    epsilon::Float64
-    kappa::Float64
-    delta::Float64
-    max_time::Float64
-    verbose::Bool
+Base.@kwdef struct SARSOPSolver <: Solver
+    epsilon::Float64    = 1e-3
+    kappa::Float64      = 0.5
+    delta::Float64      = 0.1
+    max_time::Float64   = Inf
+    verbose::Bool       = true
 end
 
 struct AlphaVec{A}
@@ -11,7 +11,7 @@ struct AlphaVec{A}
     action::A
 end
 
-function solve(solver::SARSOPSolver, pomdp::POMDP)
+function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP)
 
     start_time = time()
     while time()-start_time < solver.max_time

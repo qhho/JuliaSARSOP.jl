@@ -4,9 +4,9 @@ using POMDPs
 using POMDPModelTools
 using POMDPPolicies
 using BeliefUpdaters
+using DiscreteValueIteration
 
-export
-    SARSOPSolver
+export SARSOPSolver, SARSOPTree
 
 
 include("solver.jl")
