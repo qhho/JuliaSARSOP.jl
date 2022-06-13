@@ -8,10 +8,10 @@ using DiscreteValueIteration
 
 export SARSOPSolver, SARSOPTree
 
-
+include("tree.jl")
+include("bounds.jl")
 include("solver.jl")
 include("cache.jl")
-include("tree.jl")
 include("prune.jl")
 include("backup.jl")
 include("sample.jl")
