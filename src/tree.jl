@@ -9,7 +9,7 @@ struct SARSOPTree{S,A,O,UPD}
 
     obs::Vector{O}
 
-    ba_children::Vector{Vector{Pair{O,Int}}} # (ba_idx, o) => bp_idx
+    ba_children::Vector{Vector{Pair{O,Int}}} # (ba_idx, o) => bp_idx # deleted nodes have (o, 0) pairs for first element
     ba_action::Vector{A}
 
     _discount::Float64
