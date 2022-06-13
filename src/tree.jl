@@ -15,6 +15,8 @@ struct SARSOPTree{S,A,O,UPD}
     not_terminals::Vector{Int}
     terminals::Vector{Int}
 
+    b_touched::Vector{Int}
+
     updater::UPD
     cache::SARSOPCache
 end
@@ -39,6 +41,7 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         discount(pomdp),
         not_terminals,
         terminals,
+        Int[],
         DiscreteUpdater(pomdp),
         SARSOPCache(length(obs))
     )

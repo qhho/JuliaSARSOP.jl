@@ -12,6 +12,7 @@ struct AlphaVec{A}
 end
 
 function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP)
+    tree = SARSOPTree(pomdp)
 
     start_time = time()
     while time()-start_time < solver.max_time

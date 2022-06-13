@@ -1,7 +1,16 @@
-function sample(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
+function sample!(sol, tree)
+    empty!(tree.b_touched)
+    L = tree.V_lower[1]
+    U = L + sol.epsilon
+    sample_points(sol, tree, 1, L, U, 1)
+end
+
+function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
     V̲, V̄ = tree.V_lower[b_idx], tree.V_upper[b_idx]
     ϵ = sol.epsilon
     γ = tree._discount
+
+    push!(tree.b_touched, b_idx)
 
     if V̂ ≤ L && V̄ ≤ max(U, V̲ + ϵ*γ^(-t))
         return
@@ -17,7 +26,7 @@ function sample(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
 
         bp_idx = update(tree, b_idx, a, o)
 
-        sample(sol, tree, bp_idx, Lt, Ut, t+1)
+        sample_points(sol, tree, bp_idx, Lt, Ut, t+1)
     end
 end
 
@@ -106,7 +115,7 @@ function get_LtUt(tree, b_idx, ba_idx, Rba, L′, U′, op_idx, op)
     Ut = (U′ - Rba)/γ
     b = tree.b[b_idx]
 
-    for (o_idx, o) in enumerate(ordered_observations(pomdp))
+    for (o_idx, o) in enumerate(tree.obs)
         if op_idx != o_idx
             bp_idx = ba_child(tree, ba_idx, o)
             V̲ = tree.V_lower[bp_idx]
