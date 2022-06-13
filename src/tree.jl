@@ -13,11 +13,15 @@ struct SARSOPTree{S,A,O}
     _discount::Float64
 
     function SARSOPTree{S,A,O}(pomdp::POMDP) where {S,A,O}
+        solver = ValueIterationSolver()
+        upper_policy = solve(solver, UnderlyingMDP(pomdp))
+        upper_values = upper_policy.util
+
         return new(
             ordered_states(pomdp),
             Vector{Float64}[],
             Vector{Int}[],
-            Float64[],
+            upper_values,
             Float64[],
             ordered_observations(pomdp),
             Vector{Int}[],
