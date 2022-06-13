@@ -4,6 +4,8 @@ struct SARSOPTree{S,A,O,UPD}
     b_children::Vector{Vector{Pair{A,Int}}}
     V_upper::Vector{Float64}
     V_lower::Vector{Float64}
+    Qa_upper::Vector{Vector{Pair{A, Float64}}}
+    Qa_lower::Vector{Vector{Pair{A, Float64}}}
 
     obs::Vector{O}
 
@@ -35,6 +37,8 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         Vector{Pair{A,Int}}[],
         upper_values,
         Float64[],
+        Vector{Pair{A, Float64}}[],
+        Vector{Pair{A, Float64}}[],
         obs,
         Vector{Pair{O,Int}}[],
         ordered_actions(pomdp),
