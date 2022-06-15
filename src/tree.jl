@@ -18,9 +18,10 @@ struct SARSOPTree{S,A,O,UPD}
     not_terminals::Vector{Int}
     terminals::Vector{Int}
 
+    #do we need both b_pruned and ba_pruned? b_pruned might be enough
     b_touched::Vector{Int}
     b_pruned::BitVector
-    ba_pruned::BitVector
+    ba_pruned::BitVector 
 
     updater::UPD
     cache::SARSOPCache
