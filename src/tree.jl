@@ -93,11 +93,13 @@ function add_belief!(tree::SARSOPTree, b, ba_idx, o) # TODO: instantiate value b
     push!(tree.b, b)
     b_idx = length(tree.b)
     push!(tree.ba_children[ba_idx], o=>b_idx)
+    push!(tree.b_pruned, false)
     return b_idx
 end
 
 function add_action!(tree::SARSOPTree, b_idx, a)
     ba_idx = length(tree.ba_children) + 1
     push!(tree.b_children[b_idx], a=>ba_idx)
+    push!(tree.ba_pruned, false)
     return ba_idx
 end
