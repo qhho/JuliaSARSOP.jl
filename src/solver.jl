@@ -22,7 +22,9 @@ function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP)
     while time()-start_time < solver.max_time
         sample!(solver, tree)
         backup!(tree, alphavecs, b)
-        prune!(tree, alphavecs)
+        Γnew = pruneAlpha(Γnew, Γold, solver.delta)
+        updateBounds!(tree, Γnew)
+        pruneTree!(tree)
     end
 
     return AlphaVectorPolicy(pomdp, Γ, acts)
