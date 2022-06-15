@@ -51,6 +51,8 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         not_terminals,
         terminals,
         Int[],
+        BitVector(undef, 0),
+        BitVector(undef, 0),
         DiscreteUpdater(pomdp),
         SARSOPCache(length(obs))
     )
