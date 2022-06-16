@@ -9,18 +9,21 @@ function pruneTree!(tree::SARSOPTree)
     # For a node b, if upper bound Q(b,a) < lower bound Q(b, a'), prune a
     # current method doesn't care about pruned subtrees, how do we check if subtree is pruned?
     for b_idx in tree.b_touched
-        Qa_upper = Qa_upper[b_idx]
-        Qa_lower = Qa_lower[b_idx]
-        ba = tree.b_children[b_idx]
-        for (idx, Qvals) in enumerate(zip(Qa_lower, Qa_upper))
-            if (tree.ba_children[ba[idx].second][1].second != 0) #assume deleted nodes are 0
-                for i in idx+1:length(Qa_upper)
-                    if (Qa_upper[i].second < Qvals[1].second)
-                        for b_child_pruned_idx in tree.ba_children[ba[i].second]
-                            pushfirst!(tree.b_children[b_child_pruned_idx], Pair(tree.ba_action[ba[i].second], 0)) # set first element of root of subtree to 0
+        if tree.b_pruned[b_idx]
+            break
+        else
+            Qa_upper = Qa_upper[b_idx]
+            Qa_lower = Qa_lower[b_idx]
+            ba = tree.b_children[b_idx]
+            for (idx, Qvals) in enumerate(zip(Qa_lower, Qa_upper))
+                if (!tree.ba_pruned[ba[idx].second]!= 0)
+                    for i in idx+1:length(Qa_upper)
+                        if (Qa_upper[i].second < Qvals[1].second)
+                            for b_child_pruned_idx in tree.ba_children[ba[i].second]
+                                tree.b_pruned[b_child_pruned_idx] = true
+                            end
+                            tree.ba_pruned[ba[idx].second] = true
                         end
-                        pushfirst!(tree.ba_children[ba[i].second], Pair(tree.obs[1], 0)) # hacky method to set first element to deleted node
-                        
                     end
                 end
             end

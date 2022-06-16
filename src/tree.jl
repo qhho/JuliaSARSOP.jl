@@ -19,6 +19,8 @@ struct SARSOPTree{S,A,O,UPD}
     terminals::Vector{Int}
 
     b_touched::Vector{Int}
+    b_pruned::BitVector
+    ba_pruned::BitVector
 
     updater::UPD
     cache::SARSOPCache
