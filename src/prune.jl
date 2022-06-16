@@ -5,6 +5,13 @@ function prune(tree::SARSOPTree, Γnew::Vector{AlphaVec}, Γold::Vector{AlphaVec
     Γnew = pruneAlpha(Γnew, Γold, δ)
 end
 
+function pruneSubTree!(tree::SARSOPTree, ba_idx)
+    for b_child_pruned in tree.ba_children[ba_idx]
+        tree.b_pruned[b_child_pruned.second] = true
+    end
+    tree.ba_pruned[ba[idx]] = true
+end
+
 function pruneTree!(tree::SARSOPTree)
     # For a node b, if upper bound Q(b,a) < lower bound Q(b, a'), prune a
     # current method doesn't care about pruned subtrees, how do we check if subtree is pruned?
@@ -16,13 +23,10 @@ function pruneTree!(tree::SARSOPTree)
             Qa_lower = Qa_lower[b_idx]
             ba = tree.b_children[b_idx]
             for (idx, Qvals) in enumerate(zip(Qa_lower, Qa_upper))
-                if (!tree.ba_pruned[ba[idx].second]!= 0)
+                if (!tree.ba_pruned[ba[idx].second])
                     for i in idx+1:length(Qa_upper)
                         if (Qa_upper[i].second < Qvals[1].second)
-                            for b_child_pruned_idx in tree.ba_children[ba[i].second]
-                                tree.b_pruned[b_child_pruned_idx] = true
-                            end
-                            tree.ba_pruned[ba[idx].second] = true
+                            pruneSubTree!(tree, ba[idx].second)
                         end
                     end
                 end
