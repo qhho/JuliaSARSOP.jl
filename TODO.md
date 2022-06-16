@@ -1,7 +1,6 @@
 #TODO
 
-1. Overall structure (SARSOP tree) 
-2. Sample functions - 
-3. Backup functions - 
-4. Prune functions - 
-5. Upper and lower bound stuff - 
+1. Upper and lower bound initialization functions
+2. Bound initialization in sample?
+3. Bound updates in main code
+4. Test prune, sample, backup 
