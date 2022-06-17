@@ -1,4 +1,4 @@
-struct SARSOPTree{S,A,O,UPD}
+struct SARSOPTree{S,A,O,P<:POMDP}
     states::Vector{S}
     b::Vector{Vector{Float64}}
     b_children::Vector{Vector{Pair{A,Int}}}
@@ -21,9 +21,9 @@ struct SARSOPTree{S,A,O,UPD}
     #do we need both b_pruned and ba_pruned? b_pruned might be enough
     b_touched::Vector{Int}
     b_pruned::BitVector
-    ba_pruned::BitVector 
+    ba_pruned::BitVector
 
-    updater::UPD
+    pomdp::P
     cache::SARSOPCache
 end
 
@@ -53,23 +53,37 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         Int[],
         BitVector(undef, 0),
         BitVector(undef, 0),
-        DiscreteUpdater(pomdp),
+        pomdp,
         SARSOPCache(length(obs))
     )
 end
 
-function BeliefUpdaters.update(tree::SARSOPTree, b_idx, a, o)
+# TODO: gimme non-placeholder bounds pls
+upper_value(::SARSOPTree, ::Any) = +Inf
+lower_value(::SARSOPTree, ::Any) = -Inf
+
+function insert_root!(tree::SARSOPTree, pomdp::POMDP)
+    b0 = initialstate(pomdp)
+    b = initialize_belief(bu, b0).b
+    push!(tree.b, b)
+    push!(tree.b_children, Pair{A, Float64}[])
+    push!(tree.V_upper, upper_value(tree, b))
+    push!(tree.V_upper, lower_value(tree, b))
+    push!(tree.b_pruned, false)
+end
+
+function BeliefUpdaters.update(tree::SARSOPTree, b_idx::Int, a, o)
     b = tree.b[b_idx]
     ba_idx = b_child(tree, b_idx, a)
     bp_idx = -1
     if ba_idx === -1
         add_action!(tree, b_idx, a)
-        b′ = update(tree.updater, b, a, o)
+        b′ = update(tree, b, a, o)
         bp_idx = add_belief!(tree, b′, ba_idx, o)
     else
         bp_idx = ba_child(tree, ba_idx, o)
         if bp_idx === -1
-            b′ = update(tree.updater, b, a, o)
+            b′ = update(tree, b, a, o)
             bp_idx = add_belief!(tree, b′, ba_idx, o)
         end
     end
@@ -92,17 +106,21 @@ function ba_child(tree::SARSOPTree{S,A,O}, ba_idx::Int, o::O) where {S,A,O}
     return -1 # child not found
 end
 
-function add_belief!(tree::SARSOPTree, b, ba_idx, o) # TODO: instantiate value bounds
+function add_belief!(tree::SARSOPTree{S,A,O}, b, ba_idx::Int, o::O) where {S,A,O}
     push!(tree.b, b)
     b_idx = length(tree.b)
     push!(tree.ba_children[ba_idx], o=>b_idx)
+    push!(tree.b_children, Pair{A, Float64}[])
+    push!(tree.V_upper, upper_value(tree, b))
+    push!(tree.V_upper, lower_value(tree, b))
     push!(tree.b_pruned, false)
     return b_idx
 end
 
-function add_action!(tree::SARSOPTree, b_idx, a)
+function add_action!(tree::SARSOPTree{S,A,O}, b_idx::Int, a::A) where {S,A,O}
     ba_idx = length(tree.ba_children) + 1
     push!(tree.b_children[b_idx], a=>ba_idx)
+    push!(tree.ba_children, Pair{O, Float64}[])
     push!(tree.ba_pruned, false)
     return ba_idx
 end

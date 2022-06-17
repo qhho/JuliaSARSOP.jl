@@ -12,7 +12,7 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
 
     push!(tree.b_touched, b_idx)
 
-    if V̂ ≤ L && V̄ ≤ max(U, V̲ + ϵ*γ^(-t))
+    if V̂ ≤ L && V̄ ≤ max(U, V̲ + ϵ*γ^(-t)) # TODO: V̂ not defined
         return
     else
         Rba′, Q̲, Q̄, ap_idx = max_r_and_q(tree, b_idx)
