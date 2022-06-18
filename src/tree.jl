@@ -12,6 +12,7 @@ struct SARSOPTree{S,A,O,P<:POMDP}
 
     ba_children::Vector{Vector{Pair{O,Int}}} # (ba_idx, o) => bp_idx # deleted nodes have (o, 0) pairs for first element
     ba_action::Vector{A}
+    poba::Vector{Vector{Float64}} # ba_idx => o_idx
 
     _discount::Float64
 
@@ -24,7 +25,6 @@ struct SARSOPTree{S,A,O,P<:POMDP}
     ba_pruned::BitVector
 
     pomdp::P
-    cache::SARSOPCache
 end
 
 function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
@@ -47,20 +47,20 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         obs,
         Vector{Pair{O,Int}}[],
         ordered_actions(pomdp),
+        Vector{Float64}[],
         discount(pomdp),
         not_terminals,
         terminals,
         Int[],
         BitVector(undef, 0),
         BitVector(undef, 0),
-        pomdp,
-        SARSOPCache(length(obs))
+        pomdp
     )
 end
 
 # TODO: gimme non-placeholder bounds pls
-upper_value(::SARSOPTree, ::Any) = +Inf
-lower_value(::SARSOPTree, ::Any) = -Inf
+upper_value(::SARSOPTree, b::Vector{Float64}) = +Inf
+lower_value(::SARSOPTree, b::Vector{Float64}) = -Inf
 
 function insert_root!(tree::SARSOPTree, pomdp::POMDP)
     b0 = initialstate(pomdp)
@@ -123,4 +123,52 @@ function add_action!(tree::SARSOPTree{S,A,O}, b_idx::Int, a::A) where {S,A,O}
     push!(tree.ba_children, Pair{O, Float64}[])
     push!(tree.ba_pruned, false)
     return ba_idx
+end
+
+# actually can we just stick this in the belief updater to reduce repeated comp??
+function obs_prob(tree::SARSOPTree, b::Vector, a, o, bp::Vector)
+    pomdp = tree.pomdp
+    pobabp = 0.0
+    for (s_idx, s) in enumerate(tree.states), (sp_idx, sp) in enumerate(tree.states)
+        pobabp += b[s_idx]*b[sp_idx]*pdf(observation(pomdp, s, a, sp), o)
+    end
+    return pobabp
+end
+
+"""
+Fill p(o|b,a), V̲(τ(bao)), V̄(τ(bao)) ∀ o,a if not already filled
+"""
+function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
+    isempty!(tree.b_children[b_idx]) && return
+    ACT = ordered_actions(tree.pomdp)
+    OBS = tree.obs
+    N_OBS = length(OBS)
+    b = tree.b[b_idx]
+    n_b = length(tree.b)
+    n_ba = length(tree.ba_children)
+
+    b_children = Vector{Pair{A, Int}}(undef, length(ACT))
+    for (a_idx,a) in enumerate(ACT)
+        b_children[a_idx] = n_ba + a_idx
+
+        # TODO: If all observations are always expanded, there's little to no need for a `o => bp_idx` pair
+        #       Just need nested vector mapping ba_idx => o_idx => bp_idx
+        ba_children = Vector{Pair{O, Int}}(undef, N_OBS)
+        poba = Vector{Float64}(undef, N_OBS)
+        for (o_idx, o) in enumerate(OBS)
+            bp_idx = n_b + o_idx + N_OBS*(a_idx-1)
+            b′ = update(tree, b, a, o)
+            po = obs_prob(tree.pomdp, b, a, o, b′)
+            ba_children[o_idx] = (o => bp_idx)
+            poba[o_idx] = po
+            push!(tree.b, b′)
+            push!(tree.V_upper, upper_value(tree, b′))
+            push!(tree.V_lower, lower_value(tree, b′))
+            push!(tree.b_pruned, false)
+        end
+        push!(tree.ba_pruned, false)
+        push!(tree.ba_children, ba_children)
+        push!(tree.poba, poba)
+    end
+    push!(tree.b_children, b_children)
 end
