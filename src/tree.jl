@@ -9,6 +9,7 @@ struct SARSOPTree{S,A,O,P<:POMDP}
     Qa_lower::Vector{Vector{Pair{A, Float64}}}
 
     obs::Vector{O}
+    actions::Vector{A}
 
     ba_children::Vector{Vector{Pair{O,Int}}} # (ba_idx, o) => bp_idx # deleted nodes have (o, 0) pairs for first element
     ba_action::Vector{A}
@@ -45,6 +46,7 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         Vector{Pair{A, Float64}}[],
         Vector{Pair{A, Float64}}[],
         obs,
+        ordered_actions(pomdp),
         Vector{Pair{O,Int}}[],
         ordered_actions(pomdp),
         Vector{Float64}[],

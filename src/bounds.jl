@@ -28,7 +28,7 @@ end
 # Get upper bound value for each belief in tree
 function updateUpperBound!(tree::SARSOPTree)
     for b in tree.b
-        # DO sawtooth updating on remaining belief nodes
+        
         nothing
     end
     #tree.V_upper[b_idx] = tmp
