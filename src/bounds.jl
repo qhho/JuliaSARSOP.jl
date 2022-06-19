@@ -31,7 +31,7 @@ function updateUpperBound!(tree::SARSOPTree, b::Int, ba_idx::Int, o_idx::Int, b_
     oldV = tree.V_upper[b]
     newV = maximum(x -> x.second, tree.Qa_upper[b])
     ΔV = newV - oldV
-    ΔQ = tree._discount * poba[ba_idx][o_idx] * ΔV
+    ΔQ = tree._discount * tree.poba[ba_idx][o_idx] * ΔV
 
     obs = tree.Qa_upper[b_parent].first
     Q = tree.Qa_upper[b_parent].second
