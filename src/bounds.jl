@@ -26,10 +26,14 @@ function sawtoothUB!(tree::SARSOPTree, b_idx::Int)
 end
 
 # Get upper bound value for each belief in tree
-function updateUpperBound!(tree::SARSOPTree)
-    for b in tree.b
-        
-        nothing
-    end
-    #tree.V_upper[b_idx] = tmp
+function updateUpperBound!(tree::SARSOPTree, b::Int, ba_idx::Int, o_idx::Int, b_parent::Int)
+    # Qa_upper::Vector{Vector{Pair{A, Float64}}}
+    oldV = tree.V_upper[b]
+    newV = maximum(x -> x.second, tree.Qa_upper[b])
+    ΔV = newV - oldV
+    ΔQ = tree._discount * poba[ba_idx][o_idx] * ΔV
+
+    obs = tree.Qa_upper[b_parent].first
+    Q = tree.Qa_upper[b_parent].second
+    tree.Qa_upper[b_parent] = Pair(obs, Q + ΔQ)
 end
