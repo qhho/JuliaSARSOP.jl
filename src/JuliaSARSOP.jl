@@ -5,6 +5,7 @@ using POMDPModelTools
 using POMDPPolicies
 using BeliefUpdaters
 using DiscreteValueIteration
+using LinearAlgebra
 
 export SARSOPSolver, SARSOPTree
 
