@@ -1,5 +1,5 @@
 function sample!(sol, tree)
-    empty!(tree.b_touched)
+    empty!(tree.touched)
     L = tree.V_lower[1]
     U = L + sol.epsilon
     sample_points(sol, tree, 1, L, U, 1)
@@ -27,7 +27,7 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
 
         bp_idx = tree.ba_children[ba_idx][op_idx].second
 
-        push!(tree.touched, (b_idx, ba_idx, op_idx))
+        push!(tree.touched, b_idx)
 
         sample_points(sol, tree, bp_idx, Lt, Ut, t+1)
     end
