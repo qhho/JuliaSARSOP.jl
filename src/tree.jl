@@ -56,7 +56,7 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         discount(pomdp),
         not_terminals,
         terminals,
-        NTuple{3,Int}[],
+        Int[],
         BitVector(undef, 0),
         BitVector(undef, 0),
         pomdp,
@@ -75,6 +75,7 @@ function insert_root!(tree::SARSOPTree{S,A}) where {S,A}
     b = initialize_belief(DiscreteUpdater(pomdp), b0).b # TODO: don't need discrete updater here -> It's never used again
     push!(tree.b, b)
     push!(tree.b_children, Pair{A, Float64}[])
+    push!(tree.b_parent, (-1, -1, -1))
     push!(tree.V_upper, upper_value(tree, b))
     push!(tree.V_lower, lower_value(tree, b))
     push!(tree.b_pruned, false)
