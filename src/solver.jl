@@ -13,6 +13,7 @@ function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP{S,A}) where {S,A}
     
     start_time = time()
     Γnew = AlphaVec{A}[]
+    init_lower_value!(tree, pomdp)
     while time()-start_time < solver.max_time
         sample!(solver, tree)
         tree_backup!(Γnew, tree)
