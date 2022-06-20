@@ -13,13 +13,14 @@ function belief_norm(b::Vector{Float64}, b′::Vector{Float64}, terminals, not_t
     return b′
 end
 
-function backup_belief(tree::SARSOPTree, Γ::Vector{AlphaVec}, node::Int)
+function backup_belief(tree::SARSOPTree, node::Int)
     b = tree.b[node]
     S = tree.states
     A = tree.actions
     O = tree.obs
     pomdp = tree.pomdp
     γ = tree._discount
+    Γ = tree.Γ
     Γa = Vector{Vector{Float64}}(undef, length(A))
 
     terminals = tree.terminals
@@ -57,14 +58,13 @@ function backup_belief(tree::SARSOPTree, Γ::Vector{AlphaVec}, node::Int)
     end
 
     val,idx = findmax(map(αa -> αa ⋅ b, Γa))
-    alphavec = AlphaVec(Γa[idx],A[idx],node,val)
-
+    alphavec = AlphaVec(Γa[idx],A[idx],[node],[val])
     return alphavec
 end
 
-function tree_backup!(Γnew::Vector{AlphaVec}, Γold::Vector{AlphaVec}, tree::SARSOPTree)
+function tree_backup!(Γnew::Vector{AlphaVec}, tree::SARSOPTree)
     resize!(Γnew,tree.b_touched)
     for (i,node) in enumerate(tree.b_touched)
-        Γnew[i] = backup_belief(tree, Γold, node)
+        Γnew[i] = backup_belief(tree, node)
     end
 end

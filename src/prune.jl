@@ -1,8 +1,8 @@
-function prune(tree::SARSOPTree, Γnew::Vector{AlphaVec}, Γold::Vector{AlphaVec})
+function prune(tree::SARSOPTree, Γold::Vector{AlphaVec})
     # prune from B points that are provably suboptimal
     # For node b in Tree,
     pruneTree!(tree::SARSOPTree)
-    Γnew = pruneAlpha(Γnew, Γold, δ)
+    pruneAlpha!(tree.Γ, Γold, δ)
 end
 
 function pruneSubTreeBa!(tree::SARSOPTree, ba_idx::Int)
@@ -21,7 +21,6 @@ end
 
 function pruneTree!(tree::SARSOPTree)
     # For a node b, if upper bound Q(b,a) < lower bound Q(b, a'), prune a
-    # current method doesn't care about pruned subtrees, how do we check if subtree is pruned?
     for b_idx in tree.b_touched
         if tree.b_pruned[b_idx]
             break
@@ -42,7 +41,7 @@ function pruneTree!(tree::SARSOPTree)
     end
 end
 
-function pruneAlpha(Γnew::Vector{AlphaVec}, Γold::Vector{AlphaVec}, δ::Float64)
+function pruneAlpha!(Γnew::Vector{AlphaVec}, Γold::Vector{AlphaVec}, δ::Float64)
     # prune alpha based on witness nodes with delta dominance 
     #(this is different from SARSOP paper description, but similar to HSVI and SARSOP implementation in APPL)
     # currently inefficient with pushing to non-fixed size vector
@@ -71,5 +70,6 @@ function pruneAlpha(Γnew::Vector{AlphaVec}, Γold::Vector{AlphaVec}, δ::Float6
             push!(Γfinal, alphavec_old)
         end
     end
-    return Γfinal
+    resize!(Γnew, length(Γfinal))
+    copyto!(Γnew, Γfinal)
 end

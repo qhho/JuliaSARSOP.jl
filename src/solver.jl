@@ -6,23 +6,17 @@ Base.@kwdef struct SARSOPSolver <: Solver
     verbose::Bool       = true
 end
 
-struct AlphaVec{A}
-    alpha::Vector{Float64}
-    action::A
-    witnesses::Vector{Int}
-    value_at_witnesses::Vector{Float64}
-end
-
-function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP)
+function POMDPs.solve(solver::SARSOPSolver{S,A}, pomdp::POMDP) where {S,A}
     tree = SARSOPTree(pomdp)
 
     initUpperBound!(tree, 1)
     
     start_time = time()
+    Γnew = AlphaVec{A}[]
     while time()-start_time < solver.max_time
         sample!(solver, tree)
-        backup!(tree, alphavecs, b)
-        Γnew = pruneAlpha(Γnew, Γold, solver.delta)
+        tree_backup!(Γnew, tree)
+        pruneAlpha!(Γnew, tree.Γ, solver.delta)
         updateBounds!(tree, Γnew)
         pruneTree!(tree)
     end

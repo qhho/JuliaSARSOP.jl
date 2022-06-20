@@ -26,6 +26,7 @@ struct SARSOPTree{S,A,O,P<:POMDP}
     ba_pruned::BitVector
 
     pomdp::P
+    Γ::Vector{AlphaVec{A}}
 end
 
 function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
@@ -56,9 +57,17 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         NTuple{3,Int}[],
         BitVector(undef, 0),
         BitVector(undef, 0),
-        pomdp
+        pomdp,
+        AlphaVec{A}[]
     )
     return insert_root!(tree)
+end
+
+struct AlphaVec{A}
+    alpha::Vector{Float64}
+    action::A
+    witnesses::Vector{Int}
+    value_at_witnesses::Vector{Float64}
 end
 
 # TODO: gimme non-placeholder bounds pls
