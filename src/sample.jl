@@ -16,14 +16,16 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
         return
     else
         fill_belief!(tree, b_idx)
-        Rba′, Q̲, Q̄, ap_idx = max_r_and_q(tree, b_idx)
+        Q̲, Q̄, ap_idx = max_r_and_q(tree, b_idx)
+        a′ = tree.actions[ap_idx]
+        Rba′ = belief_reward(tree, tree.b[b_idx], a′)
 
         L′ = max(L, Q̲)
         U′ = max(U, Q̲ + γ^(-t)*ϵ)
 
-        op_idx= best_obs(tree, b_idx, ap_idx)
+        op_idx = best_obs(tree, b_idx, ap_idx)
 
-        Lt, Ut = get_LtUt(tree, b_idx, ap_idx, Rba, L′, U′, op_idx)
+        Lt, Ut = get_LtUt(tree, b_idx, ap_idx, Rba′, L′, U′, op_idx)
 
         bp_idx = tree.ba_children[op_idx].second
 
@@ -31,48 +33,28 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
     end
 end
 
+function belief_reward(tree, b, a)
+    Rba = 0.0
+    for (i,s) in enumerate(tree.states)
+        Rba += b[i]*reward(tree.pomdp, s, a)
+    end
+    return Rba
+end
+
 function max_r_and_q(tree::SARSOPTree, b_idx::Int)
     Q̲ = -Inf
     Q̄ = -Inf
-    Rba′ = 0.0
     ap_idx = 0
-    for (a,ba_idx) in tree.b_children[b_idx]
-        Rba, q_lower, q_upper = q_bounds(tree, b_idx, ba_idx)
-        q_lower > Q̲ && (Q̲ = q_lower)
-        if q_upper > Q̄
-            Q̄ = q_upper
+    for (i,(a, ba_idx)) in enumerate(tree.b_children[b_idx])
+        Q̄′ = tree.Q_upper[b_idx][i].second
+        Q̲′ = tree.Q_lower[b_idx][i].second
+        if Q̲′ > Q̲
+            Q̲ = Q̲′
+            Q̄ = Q̄′
             ap_idx = ba_idx
-            Rba′ = Rba
         end
     end
-    return Rba′, Q̲, Q̄, ap_idx
-end
-
-function q_bounds(tree::SARSOPTree, b_idx::Int, ba_idx::Int)
-    b = tree.b[b_idx]
-    a = tree.a[a_idx]
-
-    S = tree.states
-    O = tree.obs
-
-    Rba = 0.0
-    for (i,s) in enumerate(S)
-        Rba += b[i]*reward(pomdp, s, a)
-    end
-
-    EV̲b′ = 0.0
-    EV̄b′ = 0.0
-
-    for (o_idx, o) in enumerate(O)
-        poba = obs_prob(tree, ba_idx, o_idx)
-        bp_idx = ba_child(tree, ba_idx, o)
-        V̲ = tree.V_lower[bp_idx]
-        V̄ = tree.V_upper[bp_idx]
-        EV̲b′ += poba*V̲
-        EV̄b′ += poba*V̄
-    end
-
-    return Rba, Rba + γ*EV̲b′, Rba + γ*EV̄b′
+    return Q̲, Q̄, ap_idx
 end
 
 
@@ -87,8 +69,8 @@ function best_obs(tree::SARSOPTree, b_idx, ba_idx)
     best_gap = -Inf
 
     for (o_idx,o) in O
-        poba = obs_prob(tree, ba_idx, o_idx)
-        bp_idx = ba_child(tree, ba_idx, o)
+        poba = tree.poba[ba_idx][o_idx]
+        bp_idx = tree.ba_children[ba_idx][o_idx].second# ba_child(tree, ba_idx, o)
 
         gap = poba*(tree.V_upper[bp_idx] - tree.V_lower[bp_idx])
 

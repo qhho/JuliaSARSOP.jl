@@ -14,8 +14,8 @@ function _update!(bp, pomdp::POMDP{S,A,O}, b::Vector{Float64}, a::A, o::O) where
         if pdf(b, s) > 0.0
             td = transition(pomdp, s, a)
 
-            for (sp_idx, tp) in weighted_iterator(td)
-                spi = stateindex(pomdp, sp)
+            for (sp, tp) in weighted_iterator(td)
+                sp_idx = stateindex(pomdp, sp)
                 op = obs_weight(pomdp, s, a, sp, o)
 
                 w = op * tp * b.b[s_idx]

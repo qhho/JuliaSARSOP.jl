@@ -150,6 +150,8 @@ function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
     n_ba = length(tree.ba_children)
 
     b_children = Vector{Pair{A, Int}}(undef, length(ACT))
+    Qa_upper = Vector{Pair{A, Float64}}(undef, length(ACT))
+    Qa_lower = Vector{Pair{A, Float64}}(undef, length(ACT))
     for (a_idx,a) in enumerate(ACT)
         b_children[a_idx] = n_ba + a_idx
 
@@ -157,6 +159,11 @@ function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
         #       Just need nested vector mapping ba_idx => o_idx => bp_idx
         ba_children = Vector{Pair{O, Int}}(undef, N_OBS)
         poba = Vector{Float64}(undef, N_OBS)
+
+        Rba = belief_reward(tree, b, a)
+        Q̄ = Rba
+        Q̲ = Rba
+
         for (o_idx, o) in enumerate(OBS)
             bp_idx = n_b + o_idx + N_OBS*(a_idx-1)
             b′ = update(tree, b, a, o)
@@ -164,13 +171,23 @@ function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
             ba_children[o_idx] = (o => bp_idx)
             poba[o_idx] = po
             push!(tree.b, b′)
-            push!(tree.V_upper, upper_value(tree, b′))
-            push!(tree.V_lower, lower_value(tree, b′))
+            V̄ = upper_value(tree, b′)
+            V̲ = lower_value(tree, b′)
+            Q̄ += γ*po*V̄
+            Q̲ += γ*po*V̲
+            push!(tree.V_upper, V̄)
+            push!(tree.V_lower, V̲)
             push!(tree.b_pruned, false)
         end
         push!(tree.ba_pruned, false)
         push!(tree.ba_children, ba_children)
         push!(tree.poba, poba)
+
+        Qa_upper[a_idx] = a => Q̄
+        Qa_lower[a_idx] = a => Q̲
     end
     push!(tree.b_children, b_children)
+    push!(tree.Qa_upper, Qa_upper)
+    push!(tree.Qa_lower, Qa_lower)
+    nothing
 end
