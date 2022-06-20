@@ -18,7 +18,7 @@ function sawtoothUB!(tree::SARSOPTree, b_idx::Int)
     V_upper = tree.V_upper
 
     upperVvec = Float64[]
-    for (bint, vint) in zip(tree.b, V_upper)  
+    for (bint, vint) in zip(tree.b, V_upper)
         ϕ = minimum(b[s]/bint[s] for s in 1:length(b))
         push!(upperVvec, V_corner + ϕ * (vint - (sum(bint .* α_corner))))
     end
@@ -36,4 +36,12 @@ function updateUpperBound!(tree::SARSOPTree, b::Int, ba_idx::Int, o_idx::Int, b_
     obs = tree.Qa_upper[b_parent].first
     Q = tree.Qa_upper[b_parent].second
     tree.Qa_upper[b_parent] = Pair(obs, Q + ΔQ)
+end
+
+function updateUpperBounds!(tree::SARSOPTree)
+
+end
+
+function updateLowerBounds!(tree::SARSOPTree)
+
 end

@@ -51,16 +51,21 @@ function pruneAlpha!(Γnew::Vector{AlphaVec}, Γold::Vector{AlphaVec}, δ::Float
             to_del = Int[]
             Γnewα = alphavec_new.alpha
             for (witness_idx, (witness, value_at_witness)) in enumerate(zip(alphavec_old.witnesses, alphavec_old.value_at_witnesses))
-                val = 0.0
-                for (idx, v) in enumerate(Γnewα) 
-                    val += v * witness[idx]
-                end
-                alpha_dist = Γnewα - alpha_vec_old.alpha
-                deltaValue = (val - value_at_witness)*(val - value_at_witness)/(alpha_dist*alpha_dist)
-                if (deltaValue > δ^2)
-                    push!(Γnewα.witnesses, witness)
-                    push!(Γnewα.value_at_witnesses, val)
+                if tree.b_pruned[witness]
                     push!(to_del, witness_idx)
+                else
+                    b = tree.b[witness]
+                    val = 0.0
+                    for (idx, v) in enumerate(Γnewα) 
+                        val += v * b[idx]
+                    end
+                    alpha_dist = Γnewα - alpha_vec_old.alpha
+                    deltaValue = (val - value_at_witness)*(val - value_at_witness)/(alpha_dist*alpha_dist)
+                    if (deltaValue > δ^2)
+                        push!(Γnewα.witnesses, witness)
+                        push!(Γnewα.value_at_witnesses, val)
+                        push!(to_del, witness_idx)
+                    end
                 end
             end
             deleteat!(alphavec_old.witnesses, to_del)

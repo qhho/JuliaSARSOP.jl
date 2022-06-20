@@ -9,6 +9,7 @@ using DiscreteValueIteration
 export SARSOPSolver, SARSOPTree
 
 include("cache.jl")
+include("alpha.jl")
 include("tree.jl")
 include("updater.jl")
 include("bounds.jl")

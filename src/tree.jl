@@ -63,13 +63,6 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
     return insert_root!(tree)
 end
 
-struct AlphaVec{A}
-    alpha::Vector{Float64}
-    action::A
-    witnesses::Vector{Int}
-    value_at_witnesses::Vector{Float64}
-end
-
 # TODO: gimme non-placeholder bounds pls
 upper_value(::SARSOPTree, b::Vector{Float64}) = +Inf
 lower_value(::SARSOPTree, b::Vector{Float64}) = -Inf
