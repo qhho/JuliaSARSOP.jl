@@ -2,7 +2,7 @@ struct SARSOPTree{S,A,O,P<:POMDP}
     states::Vector{S}
     b::Vector{Vector{Float64}}
     b_children::Vector{Vector{Pair{A,Int}}}
-    b_parent::Vector{Vector{NTuple{3, Int}}} # bp_idx' => (bp_idx, ba_idx, o_idx)
+    b_parent::Vector{NTuple{3, Int}} # bp_idx' => (bp_idx, ba_idx, o_idx)
     Vs_upper::Vector{Float64}
     V_upper::Vector{Float64}
     V_lower::Vector{Float64}
@@ -42,7 +42,7 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         ordered_states(pomdp),
         Vector{Float64}[],
         Vector{Pair{A,Int}}[],
-        Vector{Tuple{Int, Int, Int}}[],
+        NTuple{3,Int}[],
         upper_policy.util,
         Float64[],
         Float64[],
