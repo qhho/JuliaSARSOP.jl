@@ -9,8 +9,8 @@ end
 struct AlphaVec{A}
     alpha::Vector{Float64}
     action::A
-    witness::Int
-    value_at_witness::Float64
+    witnesses::Vector{Int}
+    value_at_witnesses::Vector{Float64}
 end
 
 function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP)
