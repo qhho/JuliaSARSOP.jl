@@ -10,24 +10,24 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
     ϵ = sol.epsilon
     γ = discount(tree.pomdp)
 
-    push!(tree.b_touched, b_idx)
-
     if V̂ ≤ L && V̄ ≤ max(U, V̲ + ϵ*γ^(-t)) # TODO: V̂ not defined
         return
-    else
+    else # b_idx, ba_idx, o_idx
         fill_belief!(tree, b_idx)
         Q̲, Q̄, ap_idx = max_r_and_q(tree, b_idx)
-        a′ = tree.actions[ap_idx]
+        a′, ba_idx = tree.b_children[ap_idx]
         Rba′ = belief_reward(tree, tree.b[b_idx], a′)
 
         L′ = max(L, Q̲)
         U′ = max(U, Q̲ + γ^(-t)*ϵ)
 
-        op_idx = best_obs(tree, b_idx, ap_idx)
+        op_idx = best_obs(tree, b_idx, ba_idx)
 
-        Lt, Ut = get_LtUt(tree, b_idx, ap_idx, Rba′, L′, U′, op_idx)
+        Lt, Ut = get_LtUt(tree, b_idx, ba_idx, Rba′, L′, U′, op_idx)
 
-        bp_idx = tree.ba_children[op_idx].second
+        bp_idx = tree.ba_children[ba_idx][op_idx].second
+
+        push!(tree.touched, (b_idx, ba_idx, op_idx))
 
         sample_points(sol, tree, bp_idx, Lt, Ut, t+1)
     end
@@ -41,6 +41,7 @@ function belief_reward(tree, b, a)
     return Rba
 end
 
+# TODO: check pruning
 function max_r_and_q(tree::SARSOPTree, b_idx::Int)
     Q̲ = -Inf
     Q̄ = -Inf
@@ -51,7 +52,7 @@ function max_r_and_q(tree::SARSOPTree, b_idx::Int)
         if Q̲′ > Q̲
             Q̲ = Q̲′
             Q̄ = Q̄′
-            ap_idx = ba_idx
+            ap_idx = i
         end
     end
     return Q̲, Q̄, ap_idx
@@ -92,7 +93,7 @@ function get_LtUt(tree, b_idx, ba_idx, Rba, L′, U′, op_idx)
 
     for (o_idx, o) in enumerate(tree.obs)
         if op_idx != o_idx
-            bp_idx = ba_child(tree, ba_idx, o)
+            bp_idx = tree.ba_children[ba_idx][o_idx].second # ba_child(tree, ba_idx, o)
             V̲ = tree.V_lower[bp_idx]
             V̄ = tree.V_upper[bp_idx]
             poba = obs_prob(tree, ba_idx, o_idx)

@@ -10,6 +10,7 @@ export SARSOPSolver, SARSOPTree
 
 include("cache.jl")
 include("tree.jl")
+include("updater.jl")
 include("bounds.jl")
 include("solver.jl")
 include("prune.jl")

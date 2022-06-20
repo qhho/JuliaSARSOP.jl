@@ -21,7 +21,7 @@ struct SARSOPTree{S,A,O,P<:POMDP}
     terminals::Vector{Int}
 
     #do we need both b_pruned and ba_pruned? b_pruned might be enough
-    b_touched::Vector{Int}
+    touched::Vector{NTuple{3,Int}} # (b_idx, ba_idx, o_idx)
     b_pruned::BitVector
     ba_pruned::BitVector
 
@@ -36,7 +36,7 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
     terminals = Int[stateindex(pomdp, s) for s in states(pomdp) if isterminal(pomdp, s)]
     obs = ordered_observations(pomdp)
 
-    return SARSOPTree(
+    tree = SARSOPTree(
         ordered_states(pomdp),
         Vector{Float64}[],
         Vector{Pair{A,Int}}[],
@@ -53,25 +53,29 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         discount(pomdp),
         not_terminals,
         terminals,
-        Int[],
+        NTuple{3,Int}[],
         BitVector(undef, 0),
         BitVector(undef, 0),
         pomdp
     )
+    return insert_root!(tree)
 end
 
 # TODO: gimme non-placeholder bounds pls
 upper_value(::SARSOPTree, b::Vector{Float64}) = +Inf
 lower_value(::SARSOPTree, b::Vector{Float64}) = -Inf
 
-function insert_root!(tree::SARSOPTree, pomdp::POMDP)
+function insert_root!(tree::SARSOPTree{S,A}) where {S,A}
+    pomdp = tree.pomdp
     b0 = initialstate(pomdp)
-    b = initialize_belief(bu, b0).b
+    b = initialize_belief(DiscreteUpdater(pomdp), b0).b # TODO: don't need discrete updater here -> It's never used again
     push!(tree.b, b)
     push!(tree.b_children, Pair{A, Float64}[])
     push!(tree.V_upper, upper_value(tree, b))
-    push!(tree.V_upper, lower_value(tree, b))
+    push!(tree.V_lower, lower_value(tree, b))
     push!(tree.b_pruned, false)
+    fill_belief!(tree, 1)
+    return tree
 end
 
 function BeliefUpdaters.update(tree::SARSOPTree, b_idx::Int, a, o)
@@ -141,8 +145,9 @@ end
 Fill p(o|b,a), V̲(τ(bao)), V̄(τ(bao)) ∀ o,a if not already filled
 """
 function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
-    isempty!(tree.b_children[b_idx]) && return
-    ACT = ordered_actions(tree.pomdp)
+    !isempty(tree.b_children[b_idx]) && return
+    γ = discount(tree.pomdp)
+    ACT = tree.actions
     OBS = tree.obs
     N_OBS = length(OBS)
     b = tree.b[b_idx]
@@ -153,7 +158,7 @@ function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
     Qa_upper = Vector{Pair{A, Float64}}(undef, length(ACT))
     Qa_lower = Vector{Pair{A, Float64}}(undef, length(ACT))
     for (a_idx,a) in enumerate(ACT)
-        b_children[a_idx] = n_ba + a_idx
+        b_children[a_idx] = a => (n_ba + a_idx)
 
         # TODO: If all observations are always expanded, there's little to no need for a `o => bp_idx` pair
         #       Just need nested vector mapping ba_idx => o_idx => bp_idx
@@ -167,7 +172,7 @@ function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
         for (o_idx, o) in enumerate(OBS)
             bp_idx = n_b + o_idx + N_OBS*(a_idx-1)
             b′ = update(tree, b, a, o)
-            po = obs_prob(tree.pomdp, b, a, o, b′)
+            po = obs_prob(tree, b, a, o, b′)
             ba_children[o_idx] = (o => bp_idx)
             poba[o_idx] = po
             push!(tree.b, b′)
