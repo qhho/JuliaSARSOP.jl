@@ -1,14 +1,10 @@
-function initUpperBound!(tree::SARSOPTree, b_idx::Int)
-    b = tree.b[b_idx]
-    tmp = 0.0
-    for i in 1:length(values) 
-        tmp += values[i] * b[i]
+function init_root_value(tree::SARSOPTree, b::Vector{Float64})
+    corner_values = tree.Vs_upper 
+    value = 0.0
+    for i in 1:length(corner_values) 
+        value += corner_values[i] * b[i]
     end
-    push!(tree.V_upper, tmp)
-end
-
-function getUpperBoundSimple(values::Vector{Float64}, b::Vector{Float64})
-        return sum(values .* b)
+    return value
 end
 
 function upper_value(tree::SARSOPTree, b::Vector{Float64})
@@ -16,7 +12,8 @@ function upper_value(tree::SARSOPTree, b::Vector{Float64})
     α_corner = tree.Vs_upper
     V_corner = dot(b, α_corner)
     V_upper = tree.V_upper
-
+    @show V_upper
+    @show tree.b
     upperVvec = Float64[]
     for (bint, vint) in zip(tree.b, V_upper)
         ϕ = minimum(b[s]/bint[s] for s in 1:length(b))
@@ -35,24 +32,29 @@ function init_lower_value!(tree::SARSOPTree, pomdp::POMDP)
     α_init = 1 / (1 - γ) * maximum(minimum(r(s, a) for s in S) for a in A)
     Γ = [fill(α_init, length(S)) for a in A]
 
-    MAX_VAL = dot(tree.Γ[1], b)
+    MAX_VAL = -Inf #dot(tree.Γ[1], b)
     MAX_ALPHA = Γ[1]
     ACTION = A[1]
-    for (idx,α) in enumerate(Γ[2:end])
-        new_val = dot(α, b)
-        if new_val > MAX_VAL
-            MAX_VAL = new_val
-            MAX_ALPHA = α
-            ACTION = A[idx]
+    if length(Γ) > 1
+        for (idx,α) in enumerate(Γ[2:end])
+            new_val = dot(α, b)
+            if new_val > MAX_VAL
+                MAX_VAL = new_val
+                MAX_ALPHA = α
+                ACTION = A[idx]
+            end
         end
     end
 
-    tree.Γ = [AlphaVec(MAX_ALPHA, ACTION, [tree.b[1]], [MAX_VAL])]
+    push!(tree.Γ, AlphaVec(MAX_ALPHA, ACTION, [1], [MAX_VAL]))
 end
 
 function lower_value(tree::SARSOPTree, b::Vector{Float64})
-    MAX_VAL = dot(tree.Γ[1].alpha, b)
-    for α in tree.Γ[2:end].alpha
+    MAX_VAL = -Inf
+    alphas = tree.Γ 
+    #MAX_VAL = dot(tree.Γ[1].alpha, b)
+    for alphavec in tree.Γ
+        α = alphavec.alpha
         new_val = dot(α, b)
         if new_val > MAX_VAL
             MAX_VAL = new_val
