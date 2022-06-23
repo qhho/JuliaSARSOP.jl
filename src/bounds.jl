@@ -12,8 +12,6 @@ function upper_value(tree::SARSOPTree, b::Vector{Float64})
     α_corner = tree.Vs_upper
     V_corner = dot(b, α_corner)
     V_upper = tree.V_upper
-    @show V_upper
-    @show tree.b
     upperVvec = Float64[]
     for (bint, vint) in zip(tree.b, V_upper)
         ϕ = minimum(b[s]/bint[s] for s in 1:length(b))
