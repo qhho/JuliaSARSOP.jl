@@ -1,9 +1,7 @@
 module JuliaSARSOP
 
 using POMDPs
-using POMDPModelTools
-using POMDPPolicies
-using BeliefUpdaters
+using POMDPTools
 using DiscreteValueIteration
 using LinearAlgebra
 

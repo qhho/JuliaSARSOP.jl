@@ -65,10 +65,6 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
     return insert_root!(tree)
 end
 
-# TODO: gimme non-placeholder bounds pls
-upper_value(::SARSOPTree, b::Vector{Float64}) = +Inf
-lower_value(::SARSOPTree, b::Vector{Float64}) = -Inf
-
 function insert_root!(tree::SARSOPTree{S,A}) where {S,A}
     pomdp = tree.pomdp
     b0 = initialstate(pomdp)
