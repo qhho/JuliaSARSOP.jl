@@ -60,23 +60,30 @@ function lower_value(tree::SARSOPTree, b::Vector{Float64})
     end
     return MAX_VAL
 end
+
 # Get upper bound value for each belief in tree
 function updateUpperBound!(tree::SARSOPTree, b::Int, ba_idx::Int, o_idx::Int, b_parent::Int)
-    # Qa_upper::Vector{Vector{Pair{A, Float64}}}
+    #check b pruned
     oldV = tree.V_upper[b]
     newV = maximum(x -> x.second, tree.Qa_upper[b])
+    tree.V_upper[b] = newV
+    
     ΔV = newV - oldV
     ΔQ = tree._discount * tree.poba[ba_idx][o_idx] * ΔV
-
     obs = tree.Qa_upper[b_parent].first
     Q = tree.Qa_upper[b_parent].second
     tree.Qa_upper[b_parent] = Pair(obs, Q + ΔQ)
 end
 
 function updateUpperBounds!(tree::SARSOPTree)
+    for sampled_b in tree.sampled
 
+    end
 end
 
 function updateLowerBounds!(tree::SARSOPTree)
-
+    for sampled_b in tree.sampled
+        tree.b_parent[touched_people]
+        tree.Qa_upper[]
+    end
 end

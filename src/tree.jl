@@ -22,7 +22,7 @@ struct SARSOPTree{S,A,O,P<:POMDP}
     terminals::Vector{Int}
 
     #do we need both b_pruned and ba_pruned? b_pruned might be enough
-    touched::Vector{Int} # b_idx
+    sampled::Vector{Int} # b_idx
     b_pruned::BitVector
     ba_pruned::BitVector
 

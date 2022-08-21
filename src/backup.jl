@@ -63,8 +63,8 @@ function backup_belief(tree::SARSOPTree, node::Int)
 end
 
 function tree_backup!(Γnew::Vector{AlphaVec}, tree::SARSOPTree)
-    resize!(Γnew,tree.touched)
-    for (i,node) in enumerate(tree.touched)
+    resize!(Γnew,tree.sampled)
+    for (i,node) in enumerate(tree.sampled)
         Γnew[i] = backup_belief(tree, node)
     end
 end
