@@ -51,7 +51,7 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         obs,
         ordered_actions(pomdp),
         Vector{Pair{O,Int}}[],
-        ordered_actions(pomdp),
+        A[],
         Vector{Float64}[],
         discount(pomdp),
         not_terminals,
@@ -62,6 +62,7 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         pomdp,
         AlphaVec{A}[]
     )
+    # return tree
     return insert_root!(tree)
 end
 
@@ -70,7 +71,7 @@ function insert_root!(tree::SARSOPTree{S,A}) where {S,A}
     b0 = initialstate(pomdp)
     b = initialize_belief(DiscreteUpdater(pomdp), b0).b # TODO: don't need discrete updater here -> It's never used again
     push!(tree.b, b)
-    push!(tree.b_children, Pair{A, Float64}[])
+    push!(tree.b_children, Pair{A, Int}[])
     push!(tree.b_parent, (-1, -1, -1))
     push!(tree.V_upper, init_root_value(tree, b))
     init_lower_value!(tree, pomdp)
@@ -80,22 +81,24 @@ function insert_root!(tree::SARSOPTree{S,A}) where {S,A}
     return tree
 end
 
-function BeliefUpdaters.update(tree::SARSOPTree, b_idx::Int, a, o)
+function update_and_push(tree::SARSOPTree, b_idx::Int, a, o)
     b = tree.b[b_idx]
     ba_idx = b_child(tree, b_idx, a)
     bp_idx = -1
+    V_upper = Inf
+    V_lower = -Inf
     if ba_idx === -1
-        add_action!(tree, b_idx, a)
+        ba_idx = add_action!(tree, b_idx, a)
         b′ = update(tree, b, a, o)
-        bp_idx = add_belief!(tree, b′, ba_idx, o)
+        bp_idx, V_upper, V_lower = add_belief!(tree, b′, ba_idx, o)
     else
         bp_idx = ba_child(tree, ba_idx, o)
         if bp_idx === -1
             b′ = update(tree, b, a, o)
-            bp_idx = add_belief!(tree, b′, ba_idx, o)
+            bp_idx, V_upper, V_lower = add_belief!(tree, b′, ba_idx, o)
         end
     end
-    return bp_idx
+    return bp_idx, V_upper, V_lower
 end
 
 function b_child(tree::SARSOPTree{S,A,O}, b_idx::Int, a::A) where {S,A,O}
@@ -118,18 +121,23 @@ function add_belief!(tree::SARSOPTree{S,A,O}, b, ba_idx::Int, o::O) where {S,A,O
     push!(tree.b, b)
     b_idx = length(tree.b)
     push!(tree.ba_children[ba_idx], o=>b_idx)
-    push!(tree.b_children, Pair{A, Float64}[])
-    push!(tree.V_upper, upper_value(tree, b))
-    push!(tree.V_upper, lower_value(tree, b))
+    push!(tree.b_children, Pair{A, Int}[])
+    push!(tree.Qa_upper, Pair{A, Int}[])
+    push!(tree.Qa_lower, Pair{A, Int}[])
+    V_upper = upper_value(tree, b)
+    V_lower = lower_value(tree, b)
+    push!(tree.V_upper, V_upper)
+    push!(tree.V_lower, V_lower)
     push!(tree.b_pruned, false)
-    return b_idx
+    return b_idx, V_upper, V_lower
 end
 
 function add_action!(tree::SARSOPTree{S,A,O}, b_idx::Int, a::A) where {S,A,O}
     ba_idx = length(tree.ba_children) + 1
     push!(tree.b_children[b_idx], a=>ba_idx)
-    push!(tree.ba_children, Pair{O, Float64}[])
+    push!(tree.ba_children, Pair{O, Int}[])
     push!(tree.ba_pruned, false)
+    push!(tree.ba_action, a)
     return ba_idx
 end
 
@@ -172,29 +180,31 @@ function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
         Q̲ = Rba
 
         for (o_idx, o) in enumerate(OBS)
-            bp_idx = n_b + o_idx + N_OBS*(a_idx-1)
-            b′ = update(tree, b, a, o)
+            # bp_idx = n_b + o_idx + N_OBS*(a_idx-1)
+            bp_idx, V̄, V̲ = update_and_push(tree, b_idx, a, o)
+            b′ = tree.b[bp_idx]
             po = obs_prob(tree, b, a, o, b′)
             ba_children[o_idx] = (o => bp_idx)
             poba[o_idx] = po
-            push!(tree.b, b′)
-            V̄ = upper_value(tree, b′)
-            V̲ = lower_value(tree, b′)
             Q̄ += γ*po*V̄
             Q̲ += γ*po*V̲
-            push!(tree.V_upper, V̄)
-            push!(tree.V_lower, V̲)
-            push!(tree.b_pruned, false)
+            # @show tree.V_upper
+            # @show tree.V_lower
         end
-        push!(tree.ba_pruned, false)
-        push!(tree.ba_children, ba_children)
+        # push!(tree.ba_pruned, false)
+        # push!(tree.ba_children, ba_children)
         push!(tree.poba, poba)
 
         Qa_upper[a_idx] = a => Q̄
         Qa_lower[a_idx] = a => Q̲
     end
-    push!(tree.b_children, b_children)
-    push!(tree.Qa_upper, Qa_upper)
-    push!(tree.Qa_lower, Qa_lower)
+    # push!(tree.b_children, b_children)
+    tree.b_children[b_idx] = b_children
+    tree.Qa_upper[b_idx] =  Qa_upper
+    tree.Qa_lower[b_idx] = Qa_lower
+    # @show length(tree.b_children)
+    # @show b_idx, b_children
+    # @show tree.b_children
+    # @show tree.Qa_upper
     nothing
 end

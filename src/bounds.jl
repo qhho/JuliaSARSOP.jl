@@ -76,14 +76,15 @@ function updateUpperBound!(tree::SARSOPTree, b::Int, ba_idx::Int, o_idx::Int, b_
 end
 
 function updateUpperBounds!(tree::SARSOPTree)
-    for sampled_b in tree.sampled
-
+    for b_sampled in tree.sampled
+        ba_idx, o_idx, b_parent = tree.b_parent[b_sampled]
+        updateUpperBound!(tree, b_sampled, ba_idx, o_idx, b_parent)
     end
 end
 
 function updateLowerBounds!(tree::SARSOPTree)
-    for sampled_b in tree.sampled
-        tree.b_parent[touched_people]
-        tree.Qa_upper[]
+    for b_sampled in tree.sampled
+        ba_idx, _, b_parent = tree.b_parent[b_sampled]
+        tree.Qa_lower[parent].second = belief_reward(tree, tree.b[b_parent], tree.ba_actions[ba_idx]) + tree._discount*dot(tree.poba[ba_idx], tree.V_lower[tree.ba_children[ba_idx]]) #R(b,a) + γ E[V[b']]
     end
 end

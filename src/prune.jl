@@ -37,6 +37,9 @@ function pruneTree!(tree::SARSOPTree)
                     end
                 end
             end
+            if all(tree.ba_pruned[ba])
+                tree.b_pruned[b_idx] = true
+            end
         end
     end
 end

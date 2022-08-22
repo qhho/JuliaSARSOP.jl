@@ -1,4 +1,5 @@
 function belief_norm(b::Vector{Float64}, b′::Vector{Float64}, terminals, not_terminals)
+    #TODO: fix this nonsense
     if sum(b′[not_terminals]) != 0.
         if !isempty(terminals)
             b′[not_terminals] = b′[not_terminals] / (sum(b′[not_terminals]) / (1. - sum(b[terminals]) - sum(b′[terminals])))
@@ -14,6 +15,7 @@ function belief_norm(b::Vector{Float64}, b′::Vector{Float64}, terminals, not_t
 end
 
 function backup_belief(tree::SARSOPTree, node::Int)
+    #TODO: backup alpha vectors based on new backed up alpha vectors!!!
     b = tree.b[node]
     S = tree.states
     A = tree.actions
