@@ -9,7 +9,8 @@
 # PLAN
 
 - Tyler debugs tree_backup
-- Ben debugs sample
+✓ Ben debugs sample --> Apparently this may not have been broken
+- Ben starts tree_backup debug
 - Tyler and Ben debug sample + tree_backup
 
 

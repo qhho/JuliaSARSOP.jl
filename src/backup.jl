@@ -15,7 +15,6 @@ function belief_norm(b::Vector{Float64}, b′::Vector{Float64}, terminals, not_t
 end
 
 function backup_belief(tree::SARSOPTree, node::Int)
-    #TODO: backup alpha vectors based on new backed up alpha vectors!!!
     b = tree.b[node]
     S = tree.states
     A = tree.actions
@@ -41,12 +40,13 @@ function backup_belief(tree::SARSOPTree, node::Int)
             end
 
             # extract optimal alpha vector at resulting belief
-            Γao[obsindex(pomdp, o)] = _argmax(α -> α ⋅ b′, Γ)
+            Γao[obsindex(pomdp, o)] = argmax(α -> α.alpha ⋅ b′, Γ).alpha
         end
 
+        Γs = Vector{Float64}(undef, length(S))
         for s in S
             if isterminal(pomdp, s)
-                Γa[actionindex(pomdp, a)] = r(s,a)
+                Γs[stateindex(pomdp, s)] = 0.0
             else
                 tmp = 0.0
                 for (i, o) in enumerate(O)
@@ -54,9 +54,10 @@ function backup_belief(tree::SARSOPTree, node::Int)
                         tmp += pdf(transition(pomdp, s, a), sp) * pdf(observation(pomdp, s, a, sp), o) * Γao[i][j]
                     end
                 end
-                Γa[actionindex(pomdp, a)] =  r(s, a) + γ*tmp
+                Γs[stateindex(pomdp, s)] =  reward(pomdp, s, a) + γ*tmp
             end
         end
+        Γa[actionindex(pomdp, a)] = Γs
     end
 
     val,idx = findmax(map(αa -> αa ⋅ b, Γa))
@@ -64,9 +65,10 @@ function backup_belief(tree::SARSOPTree, node::Int)
     return alphavec
 end
 
-function tree_backup!(Γnew::Vector{AlphaVec}, tree::SARSOPTree)
-    resize!(Γnew,tree.sampled)
+function tree_backup!(Γnew::Vector{<:AlphaVec}, tree::SARSOPTree)
+    resize!(Γnew,length(tree.sampled))
     for (i,node) in enumerate(tree.sampled)
         Γnew[i] = backup_belief(tree, node)
     end
+    push!(tree.Γ,Γnew...)
 end
