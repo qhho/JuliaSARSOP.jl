@@ -10,7 +10,7 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t,
     V̲, V̄ = tree.V_lower[b_idx], tree.V_upper[b_idx]
     ϵ = sol.epsilon
     γ = discount(tree.pomdp)
-    
+
 
     V̂ = V̄ #TODO: BAD, binning method
 
@@ -34,6 +34,8 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t,
         bp_idx = tree.ba_children[ba_idx][op_idx].second
         # @show bp_idx
         push!(tree.sampled, b_idx)
+        #ba_idx, o_idx, b_parent
+        # push!(tree.b_parent,(ba_idx,op_idx,b_idx)) #TODO: Fix this. Tuple should be placed at sampled index. Check Tuple
 
         sample_points(sol, tree, bp_idx, Lt, Ut, t+1, steps+1)
     end
