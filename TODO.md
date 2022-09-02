@@ -8,9 +8,9 @@
 
 # PLAN
 
-- Tyler debugs tree_backup
-✓ Ben debugs sample --> Apparently this may not have been broken
-- Ben starts tree_backup debug
+- [x] Ben debugs sample --> Apparently this may not have been broken
+- [x] Ben starts tree_backup debug
+- Ben starts debugging update updateLowerBounds
 - Tyler and Ben debug sample + tree_backup
 
 
