@@ -11,3 +11,9 @@
 - Tyler debugs tree_backup
 - Ben debugs sample
 - Tyler and Ben debug sample + tree_backup
+
+
+# DEADLINE
+
+- SARSOP.jl fully running by 1 Oct and providing reasonable outputs
+- SARSOP.jl benchmarked with SARSOP cpp by 15 Oct
