@@ -1,6 +1,5 @@
 function sample!(sol, tree)
     empty!(tree.sampled)
-    # @show tree.V_lower
     L = tree.V_lower[1]
     U = L + sol.epsilon
     sample_points(sol, tree, 1, L, U, 1)

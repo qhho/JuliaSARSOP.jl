@@ -72,6 +72,8 @@ POMDPTools.ordered_actions(tree::SARSOPTree) = tree.actions
 POMDPs.observations(tree::SARSOPTree) = ordered_observations(tree)
 POMDPTools.ordered_observations(tree::SARSOPTree) = tree.observations
 
+POMDPs.discount(tree) = discount(tree.pomdp)
+
 function insert_root!(tree::SARSOPTree{S,A}) where {S,A}
     pomdp = tree.pomdp
     b0 = initialstate(pomdp)
@@ -148,13 +150,16 @@ function add_action!(tree::SARSOPTree{S,A,O}, b_idx::Int, a::A) where {S,A,O}
 end
 
 # actually can we just stick this in the belief updater to reduce repeated comp??
-function obs_prob(tree::SARSOPTree, b::Vector, a, o, bp::Vector)
+function obs_prob(tree::SARSOPTree, b::Vector, a, o)
     pomdp = tree.pomdp
-    pobabp = 0.0
-    for (s_idx, s) in enumerate(tree.states), (sp_idx, sp) in enumerate(tree.states)
-        pobabp += b[s_idx]*bp[sp_idx]*pdf(observation(pomdp, s, a, sp), o)
+    poba = 0.0
+    for (s_idx, s) in enumerate(states(tree))
+        T = transition(pomdp, s, a)
+        for (sp_idx, sp) in enumerate(states(tree))
+            poba += pdf(observation(pomdp, s, a, sp),o)*pdf(T, sp)*b[s_idx]
+        end
     end
-    return pobabp
+    return poba
 end
 
 """
@@ -189,7 +194,7 @@ function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
             # bp_idx = n_b + o_idx + N_OBS*(a_idx-1)
             bp_idx, V̄, V̲ = update_and_push(tree, b_idx, a, o)
             b′ = tree.b[bp_idx]
-            po = obs_prob(tree, b, a, o, b′)
+            po = obs_prob(tree, b, a, o)
             ba_children[o_idx] = (o => bp_idx)
             poba[o_idx] = po
             Q̄ += γ*po*V̄
