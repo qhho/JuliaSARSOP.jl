@@ -11,6 +11,7 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
     ϵ = sol.epsilon
     γ = discount(tree.pomdp)
 
+
     V̂ = V̄ #TODO: BAD, binning method
     # @show tree.b[b_idx]
     # @show V̂

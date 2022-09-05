@@ -1,14 +1,14 @@
 function init_root_value(tree::SARSOPTree, b::Vector{Float64})
-    corner_values = tree.Vs_upper 
+    corner_values = tree.Vs_upper
     value = 0.0
-    for i in 1:length(corner_values) 
+    for i in 1:length(corner_values)
         value += corner_values[i] * b[i]
     end
     return value
 end
 
 function upper_value(tree::SARSOPTree, b::Vector{Float64})
-    # TODO: don't include pruned beliefs in interior beliefs 
+    # TODO: don't include pruned beliefs in interior beliefs
     α_corner = tree.Vs_upper
     V_corner = dot(b, α_corner)
     V_upper = tree.V_upper
@@ -49,7 +49,7 @@ end
 
 function lower_value(tree::SARSOPTree, b::Vector{Float64})
     MAX_VAL = -Inf
-    alphas = tree.Γ 
+    alphas = tree.Γ
     #MAX_VAL = dot(tree.Γ[1].alpha, b)
     for alphavec in tree.Γ
         α = alphavec.alpha
@@ -64,15 +64,18 @@ end
 # Get upper bound value for each belief in tree
 function updateUpperBound!(tree::SARSOPTree, b::Int, ba_idx::Int, o_idx::Int, b_parent::Int)
     #check b pruned
-    oldV = tree.V_upper[b]
-    newV = maximum(x -> x.second, tree.Qa_upper[b])
-    tree.V_upper[b] = newV
-    
-    ΔV = newV - oldV
-    ΔQ = tree._discount * tree.poba[ba_idx][o_idx] * ΔV
-    obs = tree.Qa_upper[b_parent].first
-    Q = tree.Qa_upper[b_parent].second
-    tree.Qa_upper[b_parent] = Pair(obs, Q + ΔQ)
+    if b_parent > 0
+        @show ba_idx
+        oldV = tree.V_upper[b]
+        newV = maximum(x -> x.second, tree.Qa_upper[b])
+        tree.V_upper[b] = newV
+
+        ΔV = newV - oldV
+        ΔQ = tree._discount * tree.poba[ba_idx][o_idx] * ΔV
+        obs = tree.Qa_upper[b_parent].first
+        Q = tree.Qa_upper[b_parent].second
+        tree.Qa_upper[b_parent] = Pair(obs, Q + ΔQ)
+    end
 end
 
 function updateUpperBounds!(tree::SARSOPTree)
