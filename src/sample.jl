@@ -10,7 +10,7 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t,
     V̲, V̄ = tree.V_lower[b_idx], tree.V_upper[b_idx]
     ϵ = sol.epsilon
     γ = discount(tree.pomdp)
-    
+
 
     V̂ = V̄ #TODO: BAD, binning method
 
@@ -34,7 +34,6 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t,
         bp_idx = tree.ba_children[ba_idx][op_idx].second
         # @show bp_idx
         push!(tree.sampled, b_idx)
-
         sample_points(sol, tree, bp_idx, Lt, Ut, t+1, steps+1)
     end
 end
