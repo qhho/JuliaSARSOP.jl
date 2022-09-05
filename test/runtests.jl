@@ -1,5 +1,7 @@
 using JuliaSARSOP
+const JSOP = JuliaSARSOP # convenience alias
 using POMDPModels
+using POMDPTools
 using Test
 using POMDPs
 
@@ -11,9 +13,8 @@ using POMDPs
     # @test policy = solve(solver, pomdp)
 end
 
-@testset "sample" begin
-    pomdp = TigerPOMDP()
-    solver = SARSOPSolver(max_steps = 10)
-    tree = SARSOPTree(pomdp)
-    JuliaSARSOP.sample!(solver, tree)
-end
+include("sample.jl")
+
+include("updater.jl")
+
+include("tree.jl")
