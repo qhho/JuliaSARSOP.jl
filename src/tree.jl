@@ -1,5 +1,8 @@
 struct SARSOPTree{S,A,O,P<:POMDP}
     states::Vector{S}
+    actions::Vector{A}
+    observations::Vector{O}
+
     b::Vector{Vector{Float64}}
     b_children::Vector{Vector{Pair{A,Int}}}
     b_parent::Vector{NTuple{3, Int}} # bp_idx' => (bp_idx, ba_idx, o_idx)
@@ -8,9 +11,6 @@ struct SARSOPTree{S,A,O,P<:POMDP}
     V_lower::Vector{Float64}
     Qa_upper::Vector{Vector{Pair{A, Float64}}}
     Qa_lower::Vector{Vector{Pair{A, Float64}}}
-
-    obs::Vector{O}
-    actions::Vector{A}
 
     ba_children::Vector{Vector{Pair{O,Int}}} # (ba_idx, o) => bp_idx # deleted nodes have (o, 0) pairs for first element
     ba_action::Vector{A}
@@ -36,10 +36,12 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
 
     not_terminals = Int[stateindex(pomdp, s) for s in states(pomdp) if !isterminal(pomdp, s)]
     terminals = Int[stateindex(pomdp, s) for s in states(pomdp) if isterminal(pomdp, s)]
-    obs = ordered_observations(pomdp)
 
     tree = SARSOPTree(
-        ordered_states(pomdp),
+        collect(ordered_states(pomdp)),
+        collect(ordered_actions(pomdp)),
+        collect(ordered_observations(pomdp)),
+
         Vector{Float64}[],
         Vector{Pair{A,Int}}[],
         NTuple{3,Int}[],
@@ -48,8 +50,6 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         Float64[],
         Vector{Pair{A, Float64}}[],
         Vector{Pair{A, Float64}}[],
-        obs,
-        ordered_actions(pomdp),
         Vector{Pair{O,Int}}[],
         A[],
         Vector{Float64}[],
@@ -62,14 +62,20 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         pomdp,
         AlphaVec{A}[]
     )
-    # return tree
     return insert_root!(tree)
 end
+
+POMDPs.states(tree::SARSOPTree) = ordered_states(tree)
+POMDPTools.ordered_states(tree::SARSOPTree) = tree.states
+POMDPs.actions(tree::SARSOPTree) = ordered_actions(tree)
+POMDPTools.ordered_actions(tree::SARSOPTree) = tree.actions
+POMDPs.observations(tree::SARSOPTree) = ordered_observations(tree)
+POMDPTools.ordered_observations(tree::SARSOPTree) = tree.observations
 
 function insert_root!(tree::SARSOPTree{S,A}) where {S,A}
     pomdp = tree.pomdp
     b0 = initialstate(pomdp)
-    b = initialize_belief(DiscreteUpdater(pomdp), b0).b # TODO: don't need discrete updater here -> It's never used again
+    b = initialize_belief(DiscreteUpdater(pomdp), b0).b
     push!(tree.b, b)
     push!(tree.b_children, Pair{A, Int}[])
     push!(tree.b_parent, (-1, -1, -1))
@@ -146,7 +152,7 @@ function obs_prob(tree::SARSOPTree, b::Vector, a, o, bp::Vector)
     pomdp = tree.pomdp
     pobabp = 0.0
     for (s_idx, s) in enumerate(tree.states), (sp_idx, sp) in enumerate(tree.states)
-        pobabp += b[s_idx]*b[sp_idx]*pdf(observation(pomdp, s, a, sp), o)
+        pobabp += b[s_idx]*bp[sp_idx]*pdf(observation(pomdp, s, a, sp), o)
     end
     return pobabp
 end
@@ -158,7 +164,7 @@ function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
     !isempty(tree.b_children[b_idx]) && return
     γ = discount(tree.pomdp)
     ACT = tree.actions
-    OBS = tree.obs
+    OBS = tree.observations
     N_OBS = length(OBS)
     b = tree.b[b_idx]
     n_b = length(tree.b)
@@ -188,23 +194,14 @@ function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
             poba[o_idx] = po
             Q̄ += γ*po*V̄
             Q̲ += γ*po*V̲
-            # @show tree.V_upper
-            # @show tree.V_lower
         end
-        # push!(tree.ba_pruned, false)
-        # push!(tree.ba_children, ba_children)
         push!(tree.poba, poba)
 
         Qa_upper[a_idx] = a => Q̄
         Qa_lower[a_idx] = a => Q̲
     end
-    # push!(tree.b_children, b_children)
     tree.b_children[b_idx] = b_children
     tree.Qa_upper[b_idx] =  Qa_upper
     tree.Qa_lower[b_idx] = Qa_lower
-    # @show length(tree.b_children)
-    # @show b_idx, b_children
-    # @show tree.b_children
-    # @show tree.Qa_upper
     nothing
 end
