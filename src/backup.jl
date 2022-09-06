@@ -60,8 +60,24 @@ function backup_belief(tree::SARSOPTree, node::Int)
         Γa[actionindex(pomdp, a)] = Γs
     end
 
-    val,idx = findmax(map(αa -> αa ⋅ b, Γa))
-    alphavec = AlphaVec(Γa[idx],A[idx],[node],[val])
+    # val,idx = findmax(map(αa -> αa ⋅ b, Γa))
+
+    idx_max = 0
+    v_max = -Inf
+    for i ∈ eachindex(Γa)
+        a =
+        Qba = dot(Γa[i], b)
+        ba_idx = tree.b_children[node][i].second
+        tree.Qa_lower[node][i] = tree.Qa_lower[node][i].first => Qba
+        if Qba > v_max
+            v_max = Qba
+            idx_max = i
+        end
+    end
+
+    tree.V_lower[node] = v_max
+
+    alphavec = AlphaVec(Γa[idx_max],A[idx_max],[node],[v_max])
     return alphavec
 end
 
