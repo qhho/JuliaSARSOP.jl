@@ -1,10 +1,10 @@
 struct SARSOPTree{S,A,O,P<:POMDP}
-    states::Vector{S}
-    actions::Vector{A}
-    observations::Vector{O}
+    states::Vector{S} # ordered_states(pomdp)
+    actions::Vector{A} # ordered_actions(pomdp)
+    observations::Vector{O} # ordered_observations(pomdp)
 
-    b::Vector{Vector{Float64}}
-    b_children::Vector{Vector{Pair{A,Int}}}
+    b::Vector{Vector{Float64}} # b_idx => belief vector
+    b_children::Vector{Vector{Pair{A,Int}}} # b_idx => [a_1=>ba_idx1, a_2=>ba_idx2, ...]
     b_parent::Vector{NTuple{3, Int}} # bp_idx' => (bp_idx, ba_idx, o_idx)
     Vs_upper::Vector{Float64}
     V_upper::Vector{Float64}
@@ -156,7 +156,8 @@ function obs_prob(tree::SARSOPTree, b::Vector, a, o)
     for (s_idx, s) in enumerate(states(tree))
         T = transition(pomdp, s, a)
         for (sp_idx, sp) in enumerate(states(tree))
-            poba += pdf(observation(pomdp, s, a, sp),o)*pdf(T, sp)*b[s_idx]
+            Tsasp = pdf(T, sp)
+            !iszero(Tsasp) && (poba += pdf(observation(pomdp, s, a, sp),o)*Tsasp*b[s_idx])
         end
     end
     return poba

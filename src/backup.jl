@@ -16,9 +16,9 @@ end
 
 function backup_belief(tree::SARSOPTree, node::Int)
     b = tree.b[node]
-    S = tree.states
-    A = tree.actions
-    O = tree.obs
+    S = states(tree)
+    A = actions(tree)
+    O = observations(tree)
     pomdp = tree.pomdp
     γ = tree._discount
     Γ = tree.Γ

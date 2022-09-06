@@ -3,13 +3,13 @@ Base.@kwdef struct SARSOPSolver <: Solver
     kappa::Float64      = 0.5
     delta::Float64      = 0.1
     max_time::Float64   = 2.0
-    max_steps::Int      = 10
+    max_steps::Int      = 100
     verbose::Bool       = true
 end
 
 function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP{S,A}) where {S,A}
     tree = SARSOPTree(pomdp)
-    
+
     start_time = time()
     Γnew = AlphaVec{A}[]
     while time()-start_time < solver.max_time

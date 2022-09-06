@@ -8,8 +8,7 @@ end
 function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
     V̲, V̄ = tree.V_lower[b_idx], tree.V_upper[b_idx]
     ϵ = sol.epsilon
-    γ = discount(tree.pomdp)
-
+    γ = discount(tree)
 
     V̂ = V̄ #TODO: BAD, binning method
     # @show tree.b[b_idx]
@@ -21,7 +20,8 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
     # @show V̲ + ϵ*γ^(-t)
     # println()
 
-    if V̂ ≤ L && V̄ ≤ max(U, V̲ + ϵ*γ^(-t)) || t > sol.max_steps
+    # For default TigerPOMDP, V̂ and L are always constant, so V̂ > L ∀ b ∈ ℬ
+    if V̂ ≤ L || V̄ ≤ max(U, V̲ + ϵ*γ^(-t)) || t > sol.max_steps
         return
     else # b_idx, ba_idx, o_idx
         fill_belief!(tree, b_idx)
@@ -32,9 +32,12 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
         L′ = max(L, Q̲)
         U′ = max(U, Q̲ + γ^(-t)*ϵ)
 
+        # @show L′
+        # @show U′
+
         op_idx = best_obs(tree, b_idx, ba_idx)
 
-        Lt, Ut = get_LtUt(tree, b_idx, ba_idx, Rba′, L′, U′, op_idx)
+        Lt, Ut = get_LtUt(tree, ba_idx, Rba′, L′, U′, op_idx)
 
         bp_idx = tree.ba_children[ba_idx][op_idx].second
         push!(tree.sampled, b_idx)
@@ -70,8 +73,6 @@ end
 
 
 function best_obs(tree::SARSOPTree, b_idx, ba_idx)
-    b = tree.b[b_idx]
-
     S = states(tree)
     O = observations(tree)
 
@@ -81,7 +82,7 @@ function best_obs(tree::SARSOPTree, b_idx, ba_idx)
 
     for (o_idx,o) in enumerate(O)
         poba = tree.poba[ba_idx][o_idx]
-        bp_idx = tree.ba_children[ba_idx][o_idx].second# ba_child(tree, ba_idx, o)
+        bp_idx = tree.ba_children[ba_idx][o_idx].second
         gap = poba*(tree.V_upper[bp_idx] - tree.V_lower[bp_idx])
 
         if gap > best_gap
@@ -95,15 +96,14 @@ end
 
 obs_prob(tree::SARSOPTree, ba_idx::Int, o_idx::Int) = tree.poba[ba_idx][o_idx]
 
-function get_LtUt(tree, b_idx, ba_idx, Rba, L′, U′, op_idx)
+function get_LtUt(tree, ba_idx, Rba, L′, U′, op_idx)
     γ = tree._discount
     Lt = (L′ - Rba)/γ
     Ut = (U′ - Rba)/γ
-    b = tree.b[b_idx]
 
     for (o_idx, o) in enumerate(observations(tree))
         if op_idx != o_idx
-            bp_idx = tree.ba_children[ba_idx][o_idx].second # ba_child(tree, ba_idx, o)
+            bp_idx = tree.ba_children[ba_idx][o_idx].second
             V̲ = tree.V_lower[bp_idx]
             V̄ = tree.V_upper[bp_idx]
             poba = obs_prob(tree, ba_idx, o_idx)
