@@ -7,17 +7,32 @@ function init_root_value(tree::SARSOPTree, b::Vector{Float64})
     return value
 end
 
+function min_ratio(v1, v2)
+    min_ratio = Inf
+    for (a,b) ∈ zip(v1, v2)
+        ratio = a/b
+        ratio < min_ratio && (min_ratio = ratio)
+    end
+    return min_ratio
+end
+
 function upper_value(tree::SARSOPTree, b::Vector{Float64})
     # TODO: don't include pruned beliefs in interior beliefs
     α_corner = tree.Vs_upper
     V_corner = dot(b, α_corner)
     V_upper = tree.V_upper
-    upperVvec = Float64[]
+    # upperVvec = Float64[]
+
+    v̂_min = Inf
     for (bint, vint) in zip(tree.b, V_upper)
-        ϕ = minimum(b[s]/bint[s] for s in 1:length(b))
-        push!(upperVvec, V_corner + ϕ * (vint - (dot(bint, α_corner))))
+        ϕ = min_ratio(b, bint)
+        # ϕ = minimum(b[s]/bint[s] for s in 1:length(b))
+        v̂ = V_corner + ϕ * (vint - (dot(bint, α_corner)))
+        v̂ < v̂_min && (v̂_min = v̂)
+        # push!(upperVvec, V_corner + ϕ * (vint - (dot(bint, α_corner))))
     end
-    return minimum(upperVvec)
+    # return minimum(upperVvec)
+    return v̂_min
 end
 
 function init_lower_value!(tree::SARSOPTree, pomdp::POMDP)
