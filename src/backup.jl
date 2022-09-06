@@ -14,6 +14,19 @@ function belief_norm(b::Vector{Float64}, b′::Vector{Float64}, terminals, not_t
     return b′
 end
 
+function max_alpha_val(Γ, b)
+    max_α = first(Γ)
+    max_val = -Inf
+    for α ∈ Γ
+        val = dot(α.alpha, b)
+        if val > max_val
+            max_α = α
+            max_val = val
+        end
+    end
+    return max_α.alpha
+end
+
 function backup_belief(tree::SARSOPTree, node::Int)
     b = tree.b[node]
     S = states(tree)
@@ -30,7 +43,7 @@ function backup_belief(tree::SARSOPTree, node::Int)
     for a in A
         Γao = Vector{Vector{Float64}}(undef, length(O))
         trans_probs = dropdims(sum([pdf(transition(pomdp, S[is], a), sp) * b[is] for sp in S, is in not_terminals], dims=2), dims=2)
-        for o in O
+        for (o_idx,o) in enumerate(O)
             obs_probs = pdf.(map(sp -> observation(pomdp, a, sp), S), [o])
             b′ = obs_probs .* trans_probs
             if sum(b′) > 0.
@@ -40,7 +53,8 @@ function backup_belief(tree::SARSOPTree, node::Int)
             end
 
             # extract optimal alpha vector at resulting belief
-            Γao[obsindex(pomdp, o)] = argmax(α -> α.alpha ⋅ b′, Γ).alpha
+            Γao[o_idx] = max_alpha_val(Γ, b′)
+            # Γao[o_idx] = argmax(α -> α.alpha ⋅ b′, Γ).alpha
         end
 
         Γs = Vector{Float64}(undef, length(S))
@@ -65,7 +79,6 @@ function backup_belief(tree::SARSOPTree, node::Int)
     idx_max = 0
     v_max = -Inf
     for i ∈ eachindex(Γa)
-        a =
         Qba = dot(Γa[i], b)
         ba_idx = tree.b_children[node][i].second
         tree.Qa_lower[node][i] = tree.Qa_lower[node][i].first => Qba
