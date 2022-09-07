@@ -18,6 +18,40 @@
         end
     end
 
+    @testset "sizes" begin
+        pomdp = TigerPOMDP()
+        sol = SARSOPSolver()
+        tree = SARSOPTree(pomdp)
+
+        S = states(tree)
+        A = actions(tree)
+        O = observations(tree)
+        # make sure ordering is working as intended
+        # So we don't have to constantly call possibly allocating functions: `ordered_foo`, `fooindex`
+        @test all(S .== ordered_states(pomdp))
+        @test all([stateindex(pomdp, s) for s ∈ S] .== eachindex(S))
+        @test all(A .== ordered_actions(pomdp))
+        @test all([actionindex(pomdp, a) for a ∈ A] .== eachindex(A))
+        @test all(O .== ordered_observations(pomdp))
+        @test all([obsindex(pomdp, o) for o ∈ O] .== eachindex(O))
+
+        # consistent sizing
+        JSOP.sample!(sol, tree)
+
+        n_b = length(tree.b)
+        n_ba = length(tree.ba_children)
+        @test length(tree.b_children) == n_b
+        @test length(tree.V_upper) == n_b
+        @test length(tree.V_lower) == n_b
+        @test length(tree.Qa_upper) == n_b
+        @test length(tree.Qa_lower) == n_b
+        @test length(tree.ba_action) == n_ba
+        @test length(tree.poba) == n_ba
+        @test length(tree.not_terminals) + length(tree.terminals) == length(S)
+        @test length(tree.b_pruned) == n_b
+        @test length(tree.ba_pruned) == n_ba
+    end
+
     function get_LpUp(tree, ba_idx, Rba, Lt, Ut, op_idx)
         γ = discount(tree)
         Lp,Up = Rba,Rba

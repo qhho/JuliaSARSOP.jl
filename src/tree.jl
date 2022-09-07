@@ -84,6 +84,8 @@ function insert_root!(tree::SARSOPTree{S,A}) where {S,A}
     push!(tree.V_upper, init_root_value(tree, b))
     init_lower_value!(tree, pomdp)
     push!(tree.V_lower, lower_value(tree, b))
+    push!(tree.Qa_upper, Pair{A, Float64}[])
+    push!(tree.Qa_lower, Pair{A, Float64}[])
     push!(tree.b_pruned, false)
     fill_belief!(tree, 1)
     return tree
@@ -130,8 +132,8 @@ function add_belief!(tree::SARSOPTree{S,A,O}, b, ba_idx::Int, o::O) where {S,A,O
     b_idx = length(tree.b)
     push!(tree.ba_children[ba_idx], o=>b_idx)
     push!(tree.b_children, Pair{A, Int}[])
-    push!(tree.Qa_upper, Pair{A, Int}[])
-    push!(tree.Qa_lower, Pair{A, Int}[])
+    push!(tree.Qa_upper, Pair{A, Float64}[])
+    push!(tree.Qa_lower, Pair{A, Float64}[])
     V_upper = upper_value(tree, b)
     V_lower = lower_value(tree, b)
     push!(tree.V_upper, V_upper)
@@ -192,7 +194,6 @@ function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
         Q̲ = Rba
 
         for (o_idx, o) in enumerate(OBS)
-            # bp_idx = n_b + o_idx + N_OBS*(a_idx-1)
             bp_idx, V̄, V̲ = update_and_push(tree, b_idx, a, o)
             b′ = tree.b[bp_idx]
             po = obs_prob(tree, b, a, o)
@@ -207,7 +208,7 @@ function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
         Qa_lower[a_idx] = a => Q̲
     end
     tree.b_children[b_idx] = b_children
-    tree.Qa_upper[b_idx] =  Qa_upper
+    tree.Qa_upper[b_idx] = Qa_upper
     tree.Qa_lower[b_idx] = Qa_lower
     nothing
 end
