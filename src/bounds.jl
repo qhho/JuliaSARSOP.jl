@@ -21,17 +21,13 @@ function upper_value(tree::SARSOPTree, b::Vector{Float64})
     α_corner = tree.Vs_upper
     V_corner = dot(b, α_corner)
     V_upper = tree.V_upper
-    # upperVvec = Float64[]
 
     v̂_min = Inf
     for (bint, vint) in zip(tree.b, V_upper)
         ϕ = min_ratio(b, bint)
-        # ϕ = minimum(b[s]/bint[s] for s in 1:length(b))
         v̂ = V_corner + ϕ * (vint - (dot(bint, α_corner)))
         v̂ < v̂_min && (v̂_min = v̂)
-        # push!(upperVvec, V_corner + ϕ * (vint - (dot(bint, α_corner))))
     end
-    # return minimum(upperVvec)
     return v̂_min
 end
 
@@ -101,8 +97,9 @@ function updateUpperBounds!(tree::SARSOPTree)
 end
 
 function updateLowerBounds!(tree::SARSOPTree)
+    γ = discount(tree)
     for b_sampled in tree.sampled
         ba_idx, _, b_parent = tree.b_parent[b_sampled]
-        tree.Qa_lower[parent].second = belief_reward(tree, tree.b[b_parent], tree.ba_actions[ba_idx]) + tree._discount*dot(tree.poba[ba_idx], tree.V_lower[tree.ba_children[ba_idx]]) #R(b,a) + γ E[V[b']]
+        tree.Qa_lower[parent].second = belief_reward(tree, tree.b[b_parent], tree.ba_actions[ba_idx]) + γ*dot(tree.poba[ba_idx], tree.V_lower[tree.ba_children[ba_idx]]) #R(b,a) + γ E[V[b']]
     end
 end

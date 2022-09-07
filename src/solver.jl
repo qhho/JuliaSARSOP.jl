@@ -1,5 +1,6 @@
 Base.@kwdef struct SARSOPSolver <: Solver
-    epsilon::Float64    = 1e-3
+    epsilon::Float64    = 0.5
+    precision::Float64  = 1e-3
     kappa::Float64      = 0.5
     delta::Float64      = 0.1
     max_time::Float64   = 2.0
@@ -23,7 +24,6 @@ function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP{S,A}) where {S,A}
         @info "Running Pruning"
         pruneTree!(tree)
         pruneAlpha!(Γnew, tree.Γ, solver.delta)
-        # updateLowerBounds!(tree)
     end
 
     return AlphaVectorPolicy(pomdp, Γ, acts)
