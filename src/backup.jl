@@ -100,3 +100,69 @@ function tree_backup!(Γnew::Vector{<:AlphaVec}, tree::SARSOPTree)
     end
     append!(tree.Γ,Γnew)
 end
+
+
+##
+
+function backup!(tree, b_idx)
+    Γ = tree.Γ
+    b = tree.b[b_idx]
+    pomdp = tree.pomdp
+    γ = discount(tree)
+    S = states(tree)
+    A = actions(tree)
+    O = observations(tree)
+
+    # TODO: can easily cache, but we have bigger fish to fry atm
+    Γao = Matrix{Vector{Float64}}(undef, length(A), length(O))
+
+    for (a_idx, a) ∈ enumerate(A)
+        _, ba_idx = tree.b_children[b_idx][a_idx]
+        for (o_idx,o) ∈ enumerate(O)
+            _, bp_idx = tree.ba_children[ba_idx][o_idx]
+            bp = tree.b[bp_idx]
+            Γao[a_idx, o_idx] = max_alpha_val(Γ, bp)
+        end
+    end
+
+    V = -Inf
+    α_a = zeros(Float64, length(S))
+    best_α = zeros(Float64, length(S))
+    best_action = first(A)
+
+    for (a_idx, a) ∈ enumerate(A)
+        for (s_idx, s) ∈ enumerate(S)
+            rsa = reward(pomdp, s, a)
+            T = transition(pomdp, s, a)
+            tmp = 0.0
+            for (sp_idx, sp) ∈ enumerate(S)
+                Tsas′ = pdf(T,sp)
+                if Tsas′ > 0.
+                    Z = observation(pomdp, s, a, sp)
+                    for (o_idx,o) ∈ enumerate(O)
+                        Zspao = pdf(Z, o)
+                        α_ao = Γao[a_idx, o_idx]
+                        tmp += Tsas′*Zspao*α_ao[sp_idx]
+                    end
+                end
+            end
+            α_a[s_idx] = rsa + γ*tmp
+        end
+        Qba = dot(α_a, b)
+        if Qba > V
+            V = Qba
+            best_α .= α_a
+            best_action = a
+        end
+    end
+
+    α = AlphaVec(best_α, best_action, [b_idx], [V])
+    push!(Γ, α)
+    tree.V_lower[b_idx] = V
+end
+
+function backup!(tree)
+    for i ∈ reverse(eachindex(tree.sampled))
+        backup!(tree, tree.sampled[i])
+    end
+end

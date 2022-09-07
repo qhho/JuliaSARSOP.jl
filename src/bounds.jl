@@ -76,7 +76,6 @@ end
 function updateUpperBound!(tree::SARSOPTree, b::Int, ba_idx::Int, o_idx::Int, b_parent::Int)
     #check b pruned
     if b_parent > 0
-        @show ba_idx
         oldV = tree.V_upper[b]
         newV = maximum(x -> x.second, tree.Qa_upper[b])
         tree.V_upper[b] = newV
@@ -103,3 +102,5 @@ function updateLowerBounds!(tree::SARSOPTree)
         tree.Qa_lower[parent].second = belief_reward(tree, tree.b[b_parent], tree.ba_actions[ba_idx]) + γ*dot(tree.poba[ba_idx], tree.V_lower[tree.ba_children[ba_idx]]) #R(b,a) + γ E[V[b']]
     end
 end
+
+root_diff(tree) = tree.V_upper[1] - tree.V_lower[1]
