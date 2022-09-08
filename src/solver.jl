@@ -12,18 +12,15 @@ function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP{S,A}) where {S,A}
     tree = SARSOPTree(pomdp)
 
     start_time = time()
-    Γnew = AlphaVec{A}[]
     while time()-start_time < solver.max_time && root_diff(tree) > precision
         @info "Running Sample"
         sample!(solver, tree)
         @info "Running Backup"
-        tree_backup!(Γnew, tree)
+        backup!(tree)
         @info "Running Bounds Update"
         updateUpperBounds!(tree)
-        updateLowerBounds!(tree)
         @info "Running Pruning"
-        pruneTree!(tree)
-        pruneAlpha!(Γnew, tree.Γ, solver.delta)
+        prune!(solver, tree)
     end
 
     return AlphaVectorPolicy(pomdp, Γ, acts)

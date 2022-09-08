@@ -1,51 +1,52 @@
-function prune(tree::SARSOPTree, Γold::Vector{AlphaVec})
+function prune!(solver::SARSOPSolver, tree::SARSOPTree)
     # prune from B points that are provably suboptimal
     # For node b in Tree,
-    pruneTree!(tree::SARSOPTree)
-    pruneAlpha!(tree.Γ, Γold, δ)
+    prune!(tree)
+    prune_alpha!(tree.Γ, Γold, δ)
 end
 
 function pruneSubTreeBa!(tree::SARSOPTree, ba_idx::Int)
-    for b_child in tree.ba_children[ba_idx]
-        pruneSubTreeB!(tree, b_child.second)
+    for (o,b_idx) in tree.ba_children[ba_idx]
+        pruneSubTreeB!(tree, b_idx)
     end
-    tree.ba_pruned[ba[idx]] = true
+    tree.ba_pruned[ba_idx] = true
 end
 
 function pruneSubTreeB!(tree::SARSOPTree, b_idx::Int)
-    tree.b_pruned[b_idx] = true
-    for ba_child in tree.b_children[b_idx]
-        pruneSubTreeBa!(tree, ba_child.second)
+    for (a, ba_idx) in tree.b_children[b_idx]
+        pruneSubTreeBa!(tree, ba_idx)
     end
+    tree.b_pruned[b_idx] = true
 end
 
-function pruneTree!(tree::SARSOPTree)
+function prune!(tree::SARSOPTree)
     # For a node b, if upper bound Q(b,a) < lower bound Q(b, a'), prune a
-    for b_idx in tree.b_touched
+    for b_idx in tree.sampled
         if tree.b_pruned[b_idx]
             break
         else
-            Qa_upper = Qa_upper[b_idx]
-            Qa_lower = Qa_lower[b_idx]
+            # this `Vector{<:Pair}` shit is really annoying please GOD change it
+            Qa_upper = tree.Qa_upper[b_idx]::Vector{<:Pair}
+            Qa_lower = tree.Qa_lower[b_idx]::Vector{<:Pair}
+            b_children = tree.b_children[b_idx]
             ba = tree.b_children[b_idx]
-            for (idx, Qvals) in enumerate(zip(Qa_lower, Qa_upper))
-                if (!tree.ba_pruned[ba[idx].second])
-                    for i in idx+1:length(Qa_upper)
-                        if (Qa_upper[i].second < Qvals[1].second)
-                            pruneSubTreeBa!(tree, ba[idx].second)
-                        end
-                    end
+            max_lower_bound = maximum(last, Qa_lower)
+            for (idx, (a, Qba)) ∈ enumerate(Qa_upper)
+                ba_idx = last(b_children[idx])
+                all_ba_pruned = true
+                if !tree.ba_pruned[ba_idx] && last(Qa_upper[idx]) < max_lower_bound
+                    pruneSubTreeBa!(tree, ba_idx)
+                else
+                    all_ba_pruned = false
                 end
-            end
-            if all(tree.ba_pruned[ba])
-                tree.b_pruned[b_idx] = true
+                all_ba_pruned && (tree.b_pruned[b_idx] = true)
             end
         end
     end
 end
 
-function pruneAlpha!(Γnew::Vector{AlphaVec}, Γold::Vector{AlphaVec}, δ::Float64)
-    # prune alpha based on witness nodes with delta dominance 
+function prune_alpha!(Γnew::Vector{<:AlphaVec}, Γold::Vector{<:AlphaVec}, δ::Float64)
+    # prune alpha based on witness nodes with delta dominance
     #(this is different from SARSOP paper description, but similar to HSVI and SARSOP implementation in APPL)
     # currently inefficient with pushing to non-fixed size vector
     Γfinal = copy(Γnew)
@@ -59,7 +60,7 @@ function pruneAlpha!(Γnew::Vector{AlphaVec}, Γold::Vector{AlphaVec}, δ::Float
                 else
                     b = tree.b[witness]
                     val = 0.0
-                    for (idx, v) in enumerate(Γnewα) 
+                    for (idx, v) in enumerate(Γnewα)
                         val += v * b[idx]
                     end
                     alpha_dist = Γnewα - alpha_vec_old.alpha
