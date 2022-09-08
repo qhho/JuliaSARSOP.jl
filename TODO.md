@@ -1,14 +1,25 @@
 # TODO
 
-- [ ] Upper and lower bound initialization functions
-- [ ] Bound initialization in sample?
-- [ ] Bound updates in main code
-- [ ] Test prune, sample, backup
+- [ ] Bounds initialization
+  - [ ] Upper bound
+    - [x] Fast Informed Bound
+    - [x] $V_{MDP}$
+    - [ ] SAWTOOTH
+  - [x] Lower Bound (BAWS)
+- [ ] Bounds Updates
+  - [ ] Upper Bound
+  - [x] Lower bound (in `backup!`)
+- [ ] Pruning
+- [ ] Testing
+  - [ ] Sample
+  - [ ] Backup
+  - [ ] Upper Bound Update
+  - [ ] Prune
 
 
 # PLAN
 
-- [ ] Tyler debugs tree_backup
+- [x] Tyler debugs tree_backup (changed to `backup!`)
 - [ ] Ben debugs sample (Apparently this may not have been broken)
   - Only terminates because of ad hoc `max_steps` termination condition not present in actual algorithm. Still needs debugging.
 - [ ] Ben starts tree_backup debug
