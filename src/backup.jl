@@ -149,6 +149,7 @@ function backup!(tree, b_idx)
             α_a[s_idx] = rsa + γ*tmp
         end
         Qba = dot(α_a, b)
+        tree.Qa_lower[b_idx][a_idx] = a => Qba
         if Qba > V
             V = Qba
             best_α .= α_a

@@ -11,19 +11,11 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
     γ = discount(tree)
 
     V̂ = V̄ #TODO: BAD, binning method
-    # @show tree.b[b_idx]
-    # @show V̂
-    # @show L
-    # @show U
-    # @show V̲
-    # @show t
-    # @show V̲ + ϵ*γ^(-t)
-    # println()
 
     # For default TigerPOMDP, V̂ and L are always constant, so V̂ > L ∀ b ∈ ℬ
     if V̂ ≤ L || V̄ ≤ max(U, V̲ + ϵ*γ^(-t)) || t > sol.max_steps
         return
-    else # b_idx, ba_idx, o_idx
+    else
         fill_belief!(tree, b_idx)
         Q̲, Q̄, ap_idx = max_r_and_q(tree, b_idx)
         a′, ba_idx = tree.b_children[b_idx][ap_idx]
@@ -31,9 +23,6 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
 
         L′ = max(L, Q̲)
         U′ = max(U, Q̲ + γ^(-t)*ϵ)
-
-        # @show L′
-        # @show U′
 
         op_idx = best_obs(tree, b_idx, ba_idx)
 
