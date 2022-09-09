@@ -138,7 +138,7 @@ function add_belief!(tree::SARSOPTree{S,A,O}, b, ba_idx::Int, o::O) where {S,A,O
     V_lower = lower_value(tree, b)
     push!(tree.V_upper, V_upper)
     push!(tree.V_lower, V_lower)
-    push!(tree.b_pruned, false)
+    push!(tree.b_pruned, true)
     return b_idx, V_upper, V_lower
 end
 
@@ -146,7 +146,7 @@ function add_action!(tree::SARSOPTree{S,A,O}, b_idx::Int, a::A) where {S,A,O}
     ba_idx = length(tree.ba_children) + 1
     push!(tree.b_children[b_idx], a=>ba_idx)
     push!(tree.ba_children, Pair{O, Int}[])
-    push!(tree.ba_pruned, false)
+    push!(tree.ba_pruned, true)
     push!(tree.ba_action, a)
     return ba_idx
 end

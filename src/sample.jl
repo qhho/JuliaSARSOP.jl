@@ -6,6 +6,7 @@ function sample!(sol, tree)
 end
 
 function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
+    tree.b_pruned[b_idx] = false
     V̲, V̄ = tree.V_lower[b_idx], tree.V_upper[b_idx]
     ϵ = sol.epsilon
     γ = discount(tree)
@@ -19,6 +20,8 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
         fill_belief!(tree, b_idx)
         Q̲, Q̄, ap_idx = max_r_and_q(tree, b_idx)
         a′, ba_idx = tree.b_children[b_idx][ap_idx]
+        tree.ba_pruned[ba_idx] = false
+
         Rba′ = belief_reward(tree, tree.b[b_idx], a′)
 
         L′ = max(L, Q̲)
