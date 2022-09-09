@@ -46,14 +46,17 @@ function prune!(tree::SARSOPTree)
 end
 
 function belief_space_domination(α1, α2, B, δ)
+    a1_dominant = true
+    a2_dominant = true
     for b ∈ B
-        intersection_distance(α1, α2, b) < δ && return false
+        !a1_dominant && !a2_dominant && return (false, false)
+        δV = intersection_distance(α1, α2, b)
+        δV ≤ δ && (a1_dominant = false)
+        δV ≥ -δ && (a2_dominant = false)
     end
-    return true
+    return a1_dominant, a2_dominant
 end
 
-# TODO: if negative "distance" is greater than δ then α2 dominates α1
-# in `belief_space_domination` we're repeating computation by only checking if α1 dominates α2
 function intersection_distance(α1, α2, b)
     s = 0.0
     dot_sum = 0.0
@@ -74,10 +77,23 @@ function prune_alpha!(tree::SARSOPTree, δ)
     for (i,α_i) ∈ enumerate(Γ)
         pruned[i] && continue
         for (j,α_j) ∈ enumerate(Γ)
-            if i == j || pruned[j]
-                continue
-            else
-                pruned[j] = belief_space_domination(α_i, α_j, B_valid, δ)
+            (j ≤ i || pruned[j]) && continue
+            a1_dominant,a2_dominant = belief_space_domination(α_i, α_j, B_valid, δ)
+            #=
+            NOTE: α1 and α2 shouldn't technically be able to mutually dominate
+            i.e. a1_dominant and a2_dominant should never both be true.
+            But this does happen when α1 == α2 because intersection_distance returns NaN.
+            Current impl prunes α2 without doing an equality check, removing
+            the duplicate α. Could do equality check to short-circuit
+            belief_space_domination which would speed things up if we have
+            a lot of duplicates, but the equality check can slow things down
+            if α's are sufficiently diverse.
+            =#
+            if a1_dominant
+                pruned[j] = true
+            elseif a2_dominant
+                pruned[i] = true
+                break
             end
         end
     end
