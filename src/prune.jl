@@ -26,8 +26,8 @@ function prune!(tree::SARSOPTree)
             break
         else
             # this `Vector{<:Pair}` shit is really annoying please GOD change it
-            Qa_upper = tree.Qa_upper[b_idx]::Vector{<:Pair}
-            Qa_lower = tree.Qa_lower[b_idx]::Vector{<:Pair}
+            Qa_upper = tree.Qa_upper[b_idx]#::Vector{<:Pair}
+            Qa_lower = tree.Qa_lower[b_idx]#::Vector{<:Pair}
             b_children = tree.b_children[b_idx]
             ba = tree.b_children[b_idx]
             max_lower_bound = maximum(last, Qa_lower)
@@ -45,13 +45,29 @@ function prune!(tree::SARSOPTree)
     end
 end
 
+function belief_space_domination(α1, α2, B, δ)
+    for b ∈ B
+        intersection_distance(α1, α2, b) < δ && return false
+    end
+    return true
+end
+
+# TODO: if negative "distance" is greater than δ then α2 dominates α1
+# in `belief_space_domination` we're repeating computation by only checking if α1 dominates α2
+function intersection_distance(α1, α2, b)
+    s = 0.0
+    dot_sum = 0.0
+    @inbounds for i ∈ eachindex(α1, α2, b)
+        diff = α1[i] - α2[i]
+        s += abs2(diff)
+        dot_sum += diff*b[i]
+    end
+    return dot_sum / sqrt(s)
+end
+
 function prune_alpha!(tree::SARSOPTree, δ)
     Γ = tree.Γ
     B_valid = tree.b[map(!,tree.b_pruned)]
-    V = [
-        dot(α, b) + δ*norm(α,2)
-        for α ∈ Γ, b ∈ B_valid
-    ]
     pruned = falses(length(Γ))
 
     # checking if α_i dominates α_j
@@ -61,7 +77,7 @@ function prune_alpha!(tree::SARSOPTree, δ)
             if i == j || pruned[j]
                 continue
             else
-                pruned[j] = all(V[i,:] > V[j,:])
+                pruned[j] = belief_space_domination(α_i, α_j, B_valid, δ)
             end
         end
     end

@@ -23,7 +23,8 @@ function upper_value(tree::SARSOPTree, b::Vector{Float64})
     V_upper = tree.V_upper
 
     v̂_min = Inf
-    for (bint, vint) in zip(tree.b, V_upper)
+    for (i,(bint, vint)) in enumerate(zip(tree.b, V_upper))
+        tree.b_pruned[i] && continue
         ϕ = min_ratio(b, bint)
         v̂ = V_corner + ϕ * (vint - (dot(bint, α_corner)))
         v̂ < v̂_min && (v̂_min = v̂)
