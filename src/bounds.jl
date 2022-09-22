@@ -21,7 +21,6 @@ function upper_value(tree::SARSOPTree, b::Vector{Float64})
     α_corner = tree.Vs_upper
     V_corner = dot(b, α_corner)
     V_upper = tree.V_upper
-
     v̂_min = Inf
     for (i,(bint, vint)) in enumerate(zip(tree.b, V_upper))
         tree.b_pruned[i] && continue
@@ -73,25 +72,25 @@ function lower_value(tree::SARSOPTree, b::Vector{Float64})
     return MAX_VAL
 end
 
-# Get upper bound value for each belief in tree
 function updateUpperBound!(tree::SARSOPTree, b::Int, ba_idx::Int, o_idx::Int, b_parent::Int)
     #check b pruned
     if b_parent > 0
         oldV = tree.V_upper[b]
         newV = maximum(x -> x.second, tree.Qa_upper[b])
         tree.V_upper[b] = newV
-
         ΔV = newV - oldV
         ΔQ = tree._discount * tree.poba[ba_idx][o_idx] * ΔV
-        obs = tree.Qa_upper[b_parent].first
-        Q = tree.Qa_upper[b_parent].second
-        tree.Qa_upper[b_parent] = Pair(obs, Q + ΔQ)
+        obs = tree.Qa_upper[b_parent][ba_idx].first
+        Q = tree.Qa_upper[b_parent][ba_idx].second
+        tree.Qa_upper[b_parent][ba_idx] = Pair(obs, Q + ΔQ)
+    else
+        tree.V_upper[b] = maximum(x -> x.second, tree.Qa_upper[b])
     end
 end
 
 function updateUpperBounds!(tree::SARSOPTree)
-    for b_sampled in tree.sampled
-        ba_idx, o_idx, b_parent = tree.b_parent[b_sampled]
+    for b_sampled in reverse(tree.sampled)
+        b_parent, ba_idx, o_idx = tree.b_parent[b_sampled]
         updateUpperBound!(tree, b_sampled, ba_idx, o_idx, b_parent)
     end
 end

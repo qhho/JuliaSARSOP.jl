@@ -12,14 +12,16 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
     γ = discount(tree)
 
     V̂ = V̄ #TODO: BAD, binning method
-
+    # @show L, U
     # For default TigerPOMDP, V̂ and L are always constant, so V̂ > L ∀ b ∈ ℬ
-    if V̂ ≤ L || V̄ ≤ max(U, V̲ + ϵ*γ^(-t)) || t > sol.max_steps
+    if V̂ ≤ L && V̄ ≤ max(U, V̲ + ϵ*γ^(-t))  || t > sol.max_steps #||
+        t < sol.max_steps && @show t, V̂, L, V̄, U,  V̲ + ϵ*γ^(-t)
+        t > sol.max_steps && @show t, V̂, L, V̄, U,  V̲ + ϵ*γ^(-t)
         return
     else
         fill_belief!(tree, b_idx)
-        Q̲, Q̄, ap_idx = max_r_and_q(tree, b_idx)
-        a′, ba_idx = tree.b_children[b_idx][ap_idx]
+            Q̲, Q̄, ap_idx = max_r_and_q(tree, b_idx)
+        a′, ba_idx = tree.b_children[b_idx][ap_idx] #line 10
         tree.ba_pruned[ba_idx] = false
 
         Rba′ = belief_reward(tree, tree.b[b_idx], a′)
@@ -28,12 +30,15 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
         U′ = max(U, Q̲ + γ^(-t)*ϵ)
 
         op_idx = best_obs(tree, b_idx, ba_idx)
-
         Lt, Ut = get_LtUt(tree, ba_idx, Rba′, L′, U′, op_idx)
 
         bp_idx = tree.ba_children[ba_idx][op_idx].second
         push!(tree.sampled, b_idx)
+        push!(tree.real, b_idx)
 
+        # if Ut > 10000
+        #     @show t, Lt, Ut, ba_idx, Rba′, L′, U′, op_idx
+        # end
         sample_points(sol, tree, bp_idx, Lt, Ut, t+1)
     end
 end
@@ -56,6 +61,8 @@ function max_r_and_q(tree::SARSOPTree, b_idx::Int)
         Q̲′ = tree.Qa_lower[b_idx][i].second
         if Q̲′ > Q̲
             Q̲ = Q̲′
+        end
+        if Q̄′ > Q̄
             Q̄ = Q̄′
             ap_idx = i
         end
@@ -63,6 +70,13 @@ function max_r_and_q(tree::SARSOPTree, b_idx::Int)
     return Q̲, Q̄, ap_idx
 end
 
+function rand_r_and_q(tree::SARSOPTree, b_idx::Int)
+    i = rand(1:length(tree.b_children[b_idx]))
+    Q̄ = tree.Qa_upper[b_idx][i].second
+    Q̲ = tree.Qa_lower[b_idx][i].second
+    ap_idx = i
+    return Q̲, Q̄, ap_idx
+end
 
 function best_obs(tree::SARSOPTree, b_idx, ba_idx)
     S = states(tree)
@@ -84,6 +98,13 @@ function best_obs(tree::SARSOPTree, b_idx, ba_idx)
     end
 
     return best_o_idx
+end
+
+function rand_obs(tree::SARSOPTree, b_idx, ba_idx)
+
+    rand_o_idx = rand(1:length(tree.observations))
+
+    return rand_o_idx
 end
 
 obs_prob(tree::SARSOPTree, ba_idx::Int, o_idx::Int) = tree.poba[ba_idx][o_idx]

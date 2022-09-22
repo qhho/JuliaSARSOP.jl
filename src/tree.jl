@@ -5,8 +5,9 @@ struct SARSOPTree{S,A,O,P<:POMDP}
 
     b::Vector{Vector{Float64}} # b_idx => belief vector
     b_children::Vector{Vector{Pair{A,Int}}} # b_idx => [a_1=>ba_idx1, a_2=>ba_idx2, ...]
-    b_parent::Vector{NTuple{3, Int}} # bp_idx' => (bp_idx, ba_idx, o_idx)
+    b_parent::Vector{NTuple{3, Int}} # bp_idx => (b_idx, ba_idx, o_idx)
     Vs_upper::Vector{Float64}
+    # Vs_upper::Vector{Vector{Float64}}
     V_upper::Vector{Float64}
     V_lower::Vector{Float64}
     Qa_upper::Vector{Vector{Pair{A, Float64}}}
@@ -25,14 +26,25 @@ struct SARSOPTree{S,A,O,P<:POMDP}
     sampled::Vector{Int} # b_idx
     b_pruned::BitVector
     ba_pruned::BitVector
+    real::Vector{Int} #b_idx
 
     pomdp::P
     Γ::Vector{AlphaVec{A}}
 end
 
 function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
-    mdp_solver = ValueIterationSolver()
-    upper_policy = solve(mdp_solver, UnderlyingMDP(pomdp))
+    # mdp_solver = ValueIterationSolver()
+    # upper_policy = solve(mdp_solver, UnderlyingMDP(pomdp))
+
+    fib_solver = FastInformedBound(200)
+    upper_policy = solve(fib_solver, pomdp)
+
+    corner_values = fill(-Inf, length(upper_policy[1]))
+    for i in 1:length(corner_values)
+        for vec in upper_policy
+            corner_values[i] < vec[i] && (corner_values[i] = vec[i])
+        end
+    end
 
     not_terminals = Int[stateindex(pomdp, s) for s in states(pomdp) if !isterminal(pomdp, s)]
     terminals = Int[stateindex(pomdp, s) for s in states(pomdp) if isterminal(pomdp, s)]
@@ -45,7 +57,7 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         Vector{Float64}[],
         Vector{Pair{A,Int}}[],
         NTuple{3,Int}[],
-        upper_policy.util,
+        corner_values, #upper_policy.util,
         Float64[],
         Float64[],
         Vector{Pair{A, Float64}}[],
@@ -59,6 +71,7 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         Int[],
         BitVector(undef, 0),
         BitVector(undef, 0),
+        Int[],
         pomdp,
         AlphaVec{A}[]
     )
@@ -80,8 +93,9 @@ function insert_root!(tree::SARSOPTree{S,A}) where {S,A}
     b = initialize_belief(DiscreteUpdater(pomdp), b0).b
     push!(tree.b, b)
     push!(tree.b_children, Pair{A, Int}[])
-    push!(tree.b_parent, (-1, -1, -1))
+    push!(tree.b_parent, (0, 0, 0))
     push!(tree.V_upper, init_root_value(tree, b))
+    push!(tree.real, 1)
     init_lower_value!(tree, pomdp)
     push!(tree.V_lower, lower_value(tree, b))
     push!(tree.Qa_upper, Pair{A, Float64}[])
@@ -201,6 +215,11 @@ function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
             poba[o_idx] = po
             Q̄ += γ*po*V̄
             Q̲ += γ*po*V̲
+            if (bp_idx != -1)
+                push!(tree.b_parent, (b_idx, a_idx, o_idx)) #bp_idx => (b_idx, ba_idx, o_idx)
+            else
+                @show bp_idx
+            end
         end
         push!(tree.poba, poba)
 
