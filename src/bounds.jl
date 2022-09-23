@@ -72,26 +72,47 @@ function lower_value(tree::SARSOPTree, b::Vector{Float64})
     return MAX_VAL
 end
 
-function updateUpperBound!(tree::SARSOPTree, b::Int, ba_idx::Int, o_idx::Int, b_parent::Int)
-    #check b pruned
-    if b_parent > 0
-        oldV = tree.V_upper[b]
-        newV = maximum(x -> x.second, tree.Qa_upper[b])
-        tree.V_upper[b] = newV
-        ΔV = newV - oldV
-        ΔQ = tree._discount * tree.poba[ba_idx][o_idx] * ΔV
-        obs = tree.Qa_upper[b_parent][ba_idx].first
-        Q = tree.Qa_upper[b_parent][ba_idx].second
-        tree.Qa_upper[b_parent][ba_idx] = Pair(obs, Q + ΔQ)
-    else
-        tree.V_upper[b] = maximum(x -> x.second, tree.Qa_upper[b])
+function updateUpperBound!(tree::SARSOPTree, b_idx::Int)
+    b = tree.b[b_idx]
+    b_children = tree.b_children[b_idx]
+    for (a_idx,a) in enumerate(tree.actions)
+        Rba = belief_reward(tree, b, a)
+        Q̄ = Rba
+        ba_idx = last(b_children[a_idx])
+        for (o_idx, o) in enumerate(tree.observations)
+            _, V̄, _ = update(tree, b_idx, a, o)
+            po = tree.poba[ba_idx][o_idx]
+            Q̄ += tree._discount*po*V̄
+        end
+        tree.Qa_upper[b_idx][a_idx] = a => Q̄
     end
+    tree.V_upper[b_idx] = maximum(x -> x.second, tree.Qa_upper[b_idx])
 end
+
+# function updateUpperBound!(tree::SARSOPTree, b::Int, ba_idx::Int, o_idx::Int, b_parent::Int)
+#     #check b pruned
+#     if b > 1
+#         oldV = tree.V_upper[b]
+#         newV = maximum(x -> x.second, tree.Qa_upper[b])
+#         tree.V_upper[b] = newV
+
+
+        
+
+#         ΔV = newV - oldV
+#         ΔQ = tree._discount * tree.poba[ba_idx][o_idx] * ΔV
+#         obs = tree.Qa_upper[b_parent][ba_idx].first
+#         Q = tree.Qa_upper[b_parent][ba_idx].second
+#         tree.Qa_upper[b_parent][ba_idx] = Pair(obs, Q + ΔQ)
+#     else
+#         tree.V_upper[b] = maximum(x -> x.second, tree.Qa_upper[b])
+#     end
+# end
 
 function updateUpperBounds!(tree::SARSOPTree)
     for b_sampled in reverse(tree.sampled)
-        b_parent, ba_idx, o_idx = tree.b_parent[b_sampled]
-        updateUpperBound!(tree, b_sampled, ba_idx, o_idx, b_parent)
+        # b_parent, ba_idx, o_idx = tree.b_parent[b_sampled]
+        updateUpperBound!(tree, b_sampled) #updateUpperBound!(tree, b_sampled, ba_idx, o_idx, b_parent)
     end
 end
 

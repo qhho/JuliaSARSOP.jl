@@ -16,7 +16,7 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
     # For default TigerPOMDP, V̂ and L are always constant, so V̂ > L ∀ b ∈ ℬ
     if V̂ ≤ L && V̄ ≤ max(U, V̲ + ϵ*γ^(-t))  || t > sol.max_steps #||
         t < sol.max_steps && @show t, V̂, L, V̄, U,  V̲ + ϵ*γ^(-t)
-        t > sol.max_steps && @show t, V̂, L, V̄, U,  V̲ + ϵ*γ^(-t)
+        # t > sol.max_steps && @show t, V̂, L, V̄, U,  V̲ + ϵ*γ^(-t)
         return
     else
         fill_belief!(tree, b_idx)

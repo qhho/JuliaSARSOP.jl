@@ -1,5 +1,5 @@
 Base.@kwdef struct SARSOPSolver <: Solver
-    epsilon::Float64    = 10.0
+    epsilon::Float64    = 1e-10
     precision::Float64  = 1e-3
     kappa::Float64      = 0.5
     delta::Float64      = 1e-3
