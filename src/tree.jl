@@ -36,7 +36,7 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
     # mdp_solver = ValueIterationSolver()
     # upper_policy = solve(mdp_solver, UnderlyingMDP(pomdp))
 
-    fib_solver = FastInformedBound(200)
+    fib_solver = FastInformedBound(500)
     upper_policy = solve(fib_solver, pomdp)
 
     corner_values = fill(-Inf, length(upper_policy[1]))

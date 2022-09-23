@@ -1,8 +1,8 @@
 Base.@kwdef struct SARSOPSolver <: Solver
-    epsilon::Float64    = 1e-10
+    epsilon::Float64    = 0.5
     precision::Float64  = 1e-3
     kappa::Float64      = 0.5
-    delta::Float64      = 1e-3
+    delta::Float64      = 1e-1
     max_time::Float64   = 1.0
     max_steps::Int      = 2
     verbose::Bool       = true

@@ -15,12 +15,15 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
     # @show L, U
     # For default TigerPOMDP, V̂ and L are always constant, so V̂ > L ∀ b ∈ ℬ
     if V̂ ≤ L && V̄ ≤ max(U, V̲ + ϵ*γ^(-t))  || t > sol.max_steps #||
-        t < sol.max_steps && @show t, V̂, L, V̄, U,  V̲ + ϵ*γ^(-t)
+        # t < sol.max_steps && @show t, V̂, L, V̄, U,  V̲ + ϵ*γ^(-t)
         # t > sol.max_steps && @show t, V̂, L, V̄, U,  V̲ + ϵ*γ^(-t)
         return
     else
         fill_belief!(tree, b_idx)
-            Q̲, Q̄, ap_idx = max_r_and_q(tree, b_idx)
+        
+        # if rand()
+        Q̲, Q̄, ap_idx = max_r_and_q(tree, b_idx)
+        # Q̲, Q̄, ap_idx = rand_r_and_q(tree, b_idx)
         a′, ba_idx = tree.b_children[b_idx][ap_idx] #line 10
         tree.ba_pruned[ba_idx] = false
 
@@ -29,7 +32,11 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
         L′ = max(L, Q̲)
         U′ = max(U, Q̲ + γ^(-t)*ϵ)
 
-        op_idx = best_obs(tree, b_idx, ba_idx)
+        if rand() < 0.995
+            op_idx = best_obs(tree, b_idx, ba_idx)
+        else
+            op_idx = rand_obs(tree, b_idx, ba_idx)
+        end
         Lt, Ut = get_LtUt(tree, ba_idx, Rba′, L′, U′, op_idx)
 
         bp_idx = tree.ba_children[ba_idx][op_idx].second
@@ -90,13 +97,15 @@ function best_obs(tree::SARSOPTree, b_idx, ba_idx)
         poba = tree.poba[ba_idx][o_idx]
         bp_idx = tree.ba_children[ba_idx][o_idx].second
         gap = poba*(tree.V_upper[bp_idx] - tree.V_lower[bp_idx])
-
+        # if (b_idx == 1)
+            # @show ba_idx, o_idx, gap, tree.V_upper[bp_idx] , tree.V_lower[bp_idx]
+        # end
         if gap > best_gap
             best_gap = gap
             best_o_idx = o_idx
         end
     end
-
+    # @show best_o_idx
     return best_o_idx
 end
 

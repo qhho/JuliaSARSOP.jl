@@ -25,20 +25,6 @@ include("tree.jl")
 
 begin
     pomdp = TigerPOMDP();
-    solver = SARSOPSolver(max_steps = 500);
-    tree = SARSOPTree(pomdp);
-    for _ ∈ 1:100
-        JSOP.sample!(solver, tree)
-        JSOP.backup!(tree)
-        JSOP.updateUpperBounds!(tree)
-        JSOP.prune!(solver, tree)
-    end
-    @show tree.Γ
-    @show tree.V_lower[1]
-    @show tree.V_upper[1]
-end
-begin
-    pomdp = BabyPOMDP();
     solver = SARSOPSolver(max_steps = 100);
     tree = SARSOPTree(pomdp);
     for _ ∈ 1:100
@@ -46,6 +32,7 @@ begin
         JSOP.backup!(tree)
         JSOP.updateUpperBounds!(tree)
         JSOP.prune!(solver, tree)
+        @show tree.sampled
     end
     @show tree.Γ
     @show tree.V_lower[1]
@@ -54,6 +41,29 @@ end
 
 begin
     pomdp = BabyPOMDP();
+    solver = SARSOPSolver(max_steps = 100, delta = 0.1);
+    tree = SARSOPTree(pomdp);
+    for _ ∈ 1:150
+        JSOP.sample!(solver, tree)
+        JSOP.backup!(tree)
+        JSOP.updateUpperBounds!(tree)
+        JSOP.prune!(solver, tree)
+        # @show tree.sampled
+    end
+    @show tree.Γ
+    @show tree.V_upper[1]
+    @show tree.V_lower[1]
+end
+
+begin
+    pomdp = BabyPOMDP();
+    solver = SARSOP.SARSOPSolver();
+    policy = solve(solver, pomdp);
+    @show policy
+end
+
+begin
+    pomdp = TigerPOMDP();
     solver = SARSOP.SARSOPSolver();
     policy = solve(solver, pomdp);
     @show policy
