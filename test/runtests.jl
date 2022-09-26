@@ -22,6 +22,13 @@ include("updater.jl")
 
 include("tree.jl")
 
+@testset "Tiger POMDP" begin
+    pomdp = TigerPOMDP();
+    solver = SARSOPSolver(max_steps = 100, epsilon = 0.5);
+    Γ = solve(solver, pomdp)
+    @show Γ
+end
+
 
 begin
     pomdp = TigerPOMDP();
