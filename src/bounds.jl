@@ -78,7 +78,7 @@ function init_lower_value!(tree::SARSOPTree, pomdp::POMDP)
         end
     end
 
-    for _ in 1:200
+    for _ in 1:100000
         for (a_idx, a) in enumerate(A)
             for (s_idx, s) in enumerate(S)
                 Qas = reward(pomdp, s, a)
@@ -96,7 +96,12 @@ function init_lower_value!(tree::SARSOPTree, pomdp::POMDP)
             push!(tree.Γ, AlphaVec(α, A[idx], [1], [new_val]))
         end
     end
+    # new_val1 = dot([-58.3386, -68.3386], b)
+    # new_val2 = dot([-49.0379, -77.2038], b)
 
+    # push!(tree.Γ, AlphaVec([-58.3386, -68.3386], A[1], [1], [new_val1]))
+    # push!(tree.Γ, AlphaVec([-49.0379, -77.2038], A[2], [1], [new_val2]))
+    
     # push!(tree.Γ, AlphaVec(MAX_ALPHA, ACTION, [1], [MAX_VAL]))
 end
 

@@ -323,6 +323,8 @@ function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
         tree.Qa_upper[b_idx] = Qa_upper
         tree.Qa_lower[b_idx] = Qa_lower
         nothing
-
     end
+
+    tree.V_lower[b_idx] = lower_value(tree, tree.b[b_idx]);
+    tree.V_upper[b_idx] = maximum(x -> x.second, tree.Qa_upper[b_idx])
 end

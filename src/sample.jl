@@ -1,52 +1,63 @@
 function sample!(sol, tree)
     empty!(tree.sampled)
     L = tree.V_lower[1]
-    U = L + sol.epsilon
-    sample_points(sol, tree, 1, L, U, 1)
+    U = L + sol.epsilon*(tree.V_upper[1] - tree.V_lower[1])
+    sample_points(sol, tree, 1, L, U, 0, sol.epsilon*(tree.V_upper[1] - tree.V_lower[1]))
 end
 
-function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t)
+function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t, ϵ)
     tree.b_pruned[b_idx] = false
+    fill_belief!(tree, b_idx)
     V̲, V̄ = tree.V_lower[b_idx], tree.V_upper[b_idx]
-    ϵ = sol.epsilon
+    # ϵ = sol.epsilon
     γ = discount(tree)
 
     V̂ = V̄ #TODO: BAD, binning method
     # @show L, U
-    # For default TigerPOMDP, V̂ and L are always constant, so V̂ > L ∀ b ∈ ℬ
-    if V̂ ≤ L && V̄ ≤ max(U, V̲ + ϵ*γ^(-t))  || t > sol.max_steps #||
-        # t < sol.max_steps && @show t, V̂, L, V̄, U,  V̲ + ϵ*γ^(-t)
-        # t > sol.max_steps && @show t, V̂, L, V̄, U,  V̲ + ϵ*γ^(-t)
+    # @show V̂, V̲, sol.kappa*ϵ*γ^(-t)
+    # expected_error = ϵ*γ^(-t)
+    # excess_uncertainty = tree.V_upper[b_idx] - tree.V_lower[b_idx] - expected_error
+    # final_excess = tree.V_upper[b_idx] - tree.V_lower[b_idx] - sol.kappa*expected_error
+
+    # @show tree.b[b_idx], tree.V_upper[b_idx], tree.V_lower[b_idx], final_excess, expected_error, excess_uncertainty
+    if V̂ ≤ V̲ + sol.kappa*ϵ*γ^(-t)
         return
     else
-        fill_belief!(tree, b_idx)
-        
-        # if rand()
-        Q̲, Q̄, ap_idx = max_r_and_q(tree, b_idx)
-        # Q̲, Q̄, ap_idx = rand_r_and_q(tree, b_idx)
-        a′, ba_idx = tree.b_children[b_idx][ap_idx] #line 10
-        tree.ba_pruned[ba_idx] = false
-
-        Rba′ = belief_reward(tree, tree.b[b_idx], a′)
-
-        L′ = max(L, Q̲)
-        U′ = max(U, Q̲ + γ^(-t)*ϵ)
-
-        if rand() < 0.995
-            op_idx = best_obs(tree, b_idx, ba_idx)
+        if V̂ ≤ L && V̄ ≤ max(U, V̲ + ϵ*γ^(-t))  #|| t > sol.max_steps #||
+            # t < sol.max_steps && @show t, V̂, L, V̄, U,  V̲ + ϵ*γ^(-t)
+            # t > sol.max_steps && @show t, V̂, L, V̄, U,  V̲ + ϵ*γ^(-t)
+            return
         else
-            op_idx = rand_obs(tree, b_idx, ba_idx)
+            # @show tree.b[b_idx]
+            # @show V̂ ≤ L
+            # @show V̂, L
+            # @show V̄ ≤ max(U, V̲ + ϵ*γ^(-t))
+            # if rand()
+            Q̲, Q̄, ap_idx = max_r_and_q(tree, b_idx)
+            # Q̲, Q̄, ap_idx = rand_r_and_q(tree, b_idx)
+            a′, ba_idx = tree.b_children[b_idx][ap_idx] #line 10
+            tree.ba_pruned[ba_idx] = false
+
+            Rba′ = belief_reward(tree, tree.b[b_idx], a′)
+
+            L′ = max(L, Q̲)
+            U′ = max(U, Q̲ + γ^(-t)*ϵ)
+
+            # if rand() < 0.99
+            op_idx = best_obs(tree, b_idx, ba_idx, ϵ, t+1)
+            # else
+                # op_idx = rand_obs(tree, b_idx, ba_idx)
+            # end
+            Lt, Ut = get_LtUt(tree, ba_idx, Rba′, L′, U′, op_idx)
+
+            bp_idx = tree.ba_children[ba_idx][op_idx].second
+            push!(tree.sampled, b_idx)
+            # push!(tree.real, b_idx)
+            # @show tree.b[b_idx], ap_idx, op_idx, tree.b[bp_idx]
+            # @show a′, op_idx
+            # fill_belief!(tree, b_idx)
+            sample_points(sol, tree, bp_idx, Lt, Ut, t+1, ϵ)
         end
-        Lt, Ut = get_LtUt(tree, ba_idx, Rba′, L′, U′, op_idx)
-
-        bp_idx = tree.ba_children[ba_idx][op_idx].second
-        push!(tree.sampled, b_idx)
-        push!(tree.real, b_idx)
-
-        # if Ut > 10000
-        #     @show t, Lt, Ut, ba_idx, Rba′, L′, U′, op_idx
-        # end
-        sample_points(sol, tree, bp_idx, Lt, Ut, t+1)
     end
 end
 
@@ -85,27 +96,27 @@ function rand_r_and_q(tree::SARSOPTree, b_idx::Int)
     return Q̲, Q̄, ap_idx
 end
 
-function best_obs(tree::SARSOPTree, b_idx, ba_idx)
+function best_obs(tree::SARSOPTree, b_idx, ba_idx, ϵ, t)
     S = states(tree)
     O = observations(tree)
 
     best_o_idx = 0
     best_o = first(O)
     best_gap = -Inf
+    γ = tree._discount
 
     for (o_idx,o) in enumerate(O)
         poba = tree.poba[ba_idx][o_idx]
         bp_idx = tree.ba_children[ba_idx][o_idx].second
-        gap = poba*(tree.V_upper[bp_idx] - tree.V_lower[bp_idx])
+        gap = poba*(tree.V_upper[bp_idx] - tree.V_lower[bp_idx] - ϵ*γ^(-(t)))
         # if (b_idx == 1)
-            # @show ba_idx, o_idx, gap, tree.V_upper[bp_idx] , tree.V_lower[bp_idx]
+        # @show o_idx, gap
         # end
         if gap > best_gap
             best_gap = gap
             best_o_idx = o_idx
         end
     end
-    # @show best_o_idx
     return best_o_idx
 end
 
