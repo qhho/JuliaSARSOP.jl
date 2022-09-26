@@ -89,7 +89,7 @@
         Rba′ = JSOP.belief_reward(tree, tree.b[b_idx], a′)
         L′ = max(L, Q̲)
         U′ = max(U, Q̲ + γ^(-t)*ϵ)
-        op_idx = JSOP.best_obs(tree, b_idx, ba_idx)
+        op_idx = JSOP.best_obs(tree, b_idx, ba_idx, ϵ, t+1)
         Lt, Ut = JSOP.get_LtUt(tree, ba_idx, Rba′, L′, U′, op_idx)
         Lp, Up = get_LpUp(tree, ba_idx, Rba′, Lt, Ut, op_idx)
         @test Lp ≈ L′

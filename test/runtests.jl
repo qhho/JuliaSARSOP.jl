@@ -22,58 +22,50 @@ include("updater.jl")
 
 include("tree.jl")
 
+# @testset "Tiger POMDP" begin
+#     pomdp = TigerPOMDP();
+#     solver = SARSOPSolver(max_steps = 100, epsilon = 0.5);
+#     Γ = solve(solver, pomdp)
+#     @show Γ
+# end
+
+
 @testset "Tiger POMDP" begin
     pomdp = TigerPOMDP();
-    solver = SARSOPSolver(max_steps = 100, epsilon = 0.5);
-    Γ = solve(solver, pomdp)
-    @show Γ
-end
-
-
-begin
-    pomdp = TigerPOMDP();
-    solver = SARSOPSolver(max_steps = 100, epsilon = 0.5);
+    solver = SARSOPSolver(epsilon = 0.5, precision = 1e-3);
     tree = SARSOPTree(pomdp);
-    for _ ∈ 1:50
+    iterations = 0
+    while JSOP.root_diff(tree) > solver.precision
+        iterations += 1
         JSOP.sample!(solver, tree)
         JSOP.backup!(tree)
         JSOP.updateUpperBounds!(tree)
         JSOP.prune!(solver, tree)
     end
-    @show tree.Γ
-    @show tree.V_lower[1]
-    @show tree.V_upper[1]
+    @test tree.V_lower[1] - 19.37 < 0.001
+    @test JSOP.root_diff(tree) < solver.precision
+
+    solverCPP = SARSOP.SARSOPSolver(trial_improvement_factor = 0.5, precision = 1e-3, verbose = false);
+    policyCPP = solve(solverCPP, pomdp);
+    @test value(policyCPP, initialstate(pomdp)) - tree.V_lower[1] < solver.precision
 end
 
-begin
+@testset "Baby POMDP" begin
     pomdp = BabyPOMDP();
-    solver = SARSOPSolver(max_steps = 1000, epsilon = 0.1, delta = 0.1);
+    solver = SARSOPSolver(epsilon = 0.1, delta = 0.1);
     tree = SARSOPTree(pomdp);
-    # push!(tree.sampled, 1);
-    # JSOP.backup!(tree);
-    # JSOP.updateUpperBounds!(tree);
-    for _ ∈ 1:20
+    iterations = 0
+    while JSOP.root_diff(tree) > solver.precision
+        iterations += 1
         JSOP.sample!(solver, tree)
         JSOP.backup!(tree)
         JSOP.updateUpperBounds!(tree)
         JSOP.prune!(solver, tree)
-    #     @show reverse(tree.sampled)[2:end]
     end
-    @show tree.Γ
-    @show tree.V_upper[1]
-    @show tree.V_lower[1]
-end
+    @test tree.V_lower[1] - 19.37 < 0.001
+    @test JSOP.root_diff(tree) < solver.precision
 
-begin
-    pomdp = BabyPOMDP();
-    solver = SARSOP.SARSOPSolver();
-    policy = solve(solver, pomdp);
-    @show policy
-end
-
-begin
-    pomdp = TigerPOMDP();
-    solver = SARSOP.SARSOPSolver();
-    policy = solve(solver, pomdp);
-    @show policy
+    solverCPP = SARSOP.SARSOPSolver(trial_improvement_factor = 0.5, precision = 1e-3, verbose = false);
+    policyCPP = solve(solverCPP, pomdp);
+    @test value(policyCPP, initialstate(pomdp)) - tree.V_lower[1] < solver.precision
 end
