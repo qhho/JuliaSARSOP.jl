@@ -34,6 +34,7 @@ include("tree.jl")
     pomdp = TigerPOMDP();
     solver = SARSOPSolver(epsilon = 0.5, precision = 1e-3);
     tree = SARSOPTree(pomdp);
+    Γ = solve(solver, pomdp)
     iterations = 0
     while JSOP.root_diff(tree) > solver.precision
         iterations += 1
@@ -48,12 +49,14 @@ include("tree.jl")
     solverCPP = SARSOP.SARSOPSolver(trial_improvement_factor = 0.5, precision = 1e-3, verbose = false);
     policyCPP = solve(solverCPP, pomdp);
     @test value(policyCPP, initialstate(pomdp)) - tree.V_lower[1] < solver.precision
+    @test value(policyCPP, initialstate(pomdp)) - value(Γ, initialstate(pomdp)) < solver.precision
 end
 
 @testset "Baby POMDP" begin
     pomdp = BabyPOMDP();
     solver = SARSOPSolver(epsilon = 0.1, delta = 0.1);
     tree = SARSOPTree(pomdp);
+    Γ = solve(solver, pomdp)
     iterations = 0
     while JSOP.root_diff(tree) > solver.precision
         iterations += 1
@@ -68,4 +71,5 @@ end
     solverCPP = SARSOP.SARSOPSolver(trial_improvement_factor = 0.5, precision = 1e-3, verbose = false);
     policyCPP = solve(solverCPP, pomdp);
     @test value(policyCPP, initialstate(pomdp)) - tree.V_lower[1] < solver.precision
+    @test value(policyCPP, initialstate(pomdp)) - value(Γ, initialstate(pomdp)) < solver.precision
 end

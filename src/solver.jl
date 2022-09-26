@@ -24,5 +24,5 @@ function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP{S,A}) where {S,A}
         prune!(solver, tree)
         iterations += 1
     end
-    return AlphaVectorPolicy(pomdp, get_alphas(tree.Γ), tree.actions)
+    return AlphaVectorPolicy(pomdp, getproperty.(tree.Γ, :alpha), getproperty.(tree.Γ, :action))
 end
