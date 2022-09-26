@@ -48,13 +48,13 @@ include("tree.jl")
 
     solverCPP = SARSOP.SARSOPSolver(trial_improvement_factor = 0.5, precision = 1e-3, verbose = false);
     policyCPP = solve(solverCPP, pomdp);
-    @test value(policyCPP, initialstate(pomdp)) - tree.V_lower[1] < solver.precision
-    @test value(policyCPP, initialstate(pomdp)) - value(Γ, initialstate(pomdp)) < solver.precision
+    @test abs(value(policyCPP, initialstate(pomdp)) - tree.V_lower[1]) < 0.01
+    @test abs(value(policyCPP, initialstate(pomdp)) - value(Γ, initialstate(pomdp))) < 0.01
 end
 
 @testset "Baby POMDP" begin
     pomdp = BabyPOMDP();
-    solver = SARSOPSolver(epsilon = 0.1, delta = 0.1);
+    solver = SARSOPSolver(epsilon = 0.1, delta = 0.1, precision = 1e-3);
     tree = SARSOPTree(pomdp);
     Γ = solve(solver, pomdp)
     iterations = 0
@@ -70,6 +70,6 @@ end
 
     solverCPP = SARSOP.SARSOPSolver(trial_improvement_factor = 0.5, precision = 1e-3, verbose = false);
     policyCPP = solve(solverCPP, pomdp);
-    @test value(policyCPP, initialstate(pomdp)) - tree.V_lower[1] < solver.precision
-    @test value(policyCPP, initialstate(pomdp)) - value(Γ, initialstate(pomdp)) < solver.precision
+    @test abs(value(policyCPP, initialstate(pomdp)) - tree.V_lower[1]) < 0.01
+    @test abs(value(policyCPP, initialstate(pomdp)) - value(Γ, initialstate(pomdp))) < 0.01
 end
