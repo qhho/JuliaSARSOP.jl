@@ -7,6 +7,7 @@ using LinearAlgebra
 
 export SARSOPSolver, SARSOPTree
 
+include("fib.jl")
 include("alpha.jl")
 include("tree.jl")
 include("updater.jl")

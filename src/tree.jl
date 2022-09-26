@@ -5,8 +5,9 @@ struct SARSOPTree{S,A,O,P<:POMDP}
 
     b::Vector{Vector{Float64}} # b_idx => belief vector
     b_children::Vector{Vector{Pair{A,Int}}} # b_idx => [a_1=>ba_idx1, a_2=>ba_idx2, ...]
-    b_parent::Vector{NTuple{3, Int}} # bp_idx' => (bp_idx, ba_idx, o_idx)
+    b_parent::Vector{NTuple{3, Int}} # bp_idx => (b_idx, ba_idx, o_idx)
     Vs_upper::Vector{Float64}
+    # Vs_upper::Vector{Vector{Float64}}
     V_upper::Vector{Float64}
     V_lower::Vector{Float64}
     Qa_upper::Vector{Vector{Pair{A, Float64}}}
@@ -25,14 +26,25 @@ struct SARSOPTree{S,A,O,P<:POMDP}
     sampled::Vector{Int} # b_idx
     b_pruned::BitVector
     ba_pruned::BitVector
+    real::Vector{Int} #b_idx
 
     pomdp::P
     Γ::Vector{AlphaVec{A}}
 end
 
 function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
-    mdp_solver = ValueIterationSolver()
-    upper_policy = solve(mdp_solver, UnderlyingMDP(pomdp))
+    # mdp_solver = ValueIterationSolver()
+    # upper_policy = solve(mdp_solver, UnderlyingMDP(pomdp))
+
+    fib_solver = FastInformedBound(500)
+    upper_policy = solve(fib_solver, pomdp)
+
+    corner_values = fill(-Inf, length(upper_policy[1]))
+    for i in 1:length(corner_values)
+        for vec in upper_policy
+            corner_values[i] < vec[i] && (corner_values[i] = vec[i])
+        end
+    end
 
     not_terminals = Int[stateindex(pomdp, s) for s in states(pomdp) if !isterminal(pomdp, s)]
     terminals = Int[stateindex(pomdp, s) for s in states(pomdp) if isterminal(pomdp, s)]
@@ -45,7 +57,7 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         Vector{Float64}[],
         Vector{Pair{A,Int}}[],
         NTuple{3,Int}[],
-        upper_policy.util,
+        corner_values, #upper_policy.util,
         Float64[],
         Float64[],
         Vector{Pair{A, Float64}}[],
@@ -59,6 +71,7 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         Int[],
         BitVector(undef, 0),
         BitVector(undef, 0),
+        Int[],
         pomdp,
         AlphaVec{A}[]
     )
@@ -80,8 +93,9 @@ function insert_root!(tree::SARSOPTree{S,A}) where {S,A}
     b = initialize_belief(DiscreteUpdater(pomdp), b0).b
     push!(tree.b, b)
     push!(tree.b_children, Pair{A, Int}[])
-    push!(tree.b_parent, (-1, -1, -1))
+    push!(tree.b_parent, (0, 0, 0))
     push!(tree.V_upper, init_root_value(tree, b))
+    push!(tree.real, 1)
     init_lower_value!(tree, pomdp)
     push!(tree.V_lower, lower_value(tree, b))
     push!(tree.Qa_upper, Pair{A, Float64}[])
@@ -111,10 +125,27 @@ function update_and_push(tree::SARSOPTree, b_idx::Int, a, o)
     return bp_idx, V_upper, V_lower
 end
 
+function update(tree::SARSOPTree, b_idx::Int, a, o)
+    b = tree.b[b_idx]
+    ba_idx = b_child(tree, b_idx, a)
+    bp_idx = ba_child(tree, ba_idx, o)
+    V_upper = upper_value(tree, tree.b[bp_idx])
+    V_lower = lower_value(tree, tree.b[bp_idx])
+    tree.V_upper[bp_idx] = V_upper
+    tree.V_lower[bp_idx] = V_lower
+    return bp_idx, V_upper, V_lower
+end
+
 function b_child(tree::SARSOPTree{S,A,O}, b_idx::Int, a::A) where {S,A,O}
+    # @show b_idx, tree.b_children
     children = tree.b_children[b_idx]
+    # @show children
     for (a′, ba_idx) in children
-        a′ == a && return ba_idx
+        if a′ == a
+            # @show a′, ba_idx
+            return ba_idx
+        end
+        # a′ == a && @show a', ba_idx && return ba_idx
     end
     return -1 # child not found
 end
@@ -168,8 +199,57 @@ end
 """
 Fill p(o|b,a), V̲(τ(bao)), V̄(τ(bao)) ∀ o,a if not already filled
 """
+# function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
+#     !isempty(tree.b_children[b_idx]) && return
+#     γ = discount(tree.pomdp)
+#     ACT = tree.actions
+#     OBS = tree.observations
+#     N_OBS = length(OBS)
+#     b = tree.b[b_idx]
+#     n_b = length(tree.b)
+#     n_ba = length(tree.ba_children)
+
+#     b_children = Vector{Pair{A, Int}}(undef, length(ACT))
+#     Qa_upper = Vector{Pair{A, Float64}}(undef, length(ACT))
+#     Qa_lower = Vector{Pair{A, Float64}}(undef, length(ACT))
+#     for (a_idx,a) in enumerate(ACT)
+#         b_children[a_idx] = a => (n_ba + a_idx)
+
+#         # TODO: If all observations are always expanded, there's little to no need for a `o => bp_idx` pair
+#         #       Just need nested vector mapping ba_idx => o_idx => bp_idx
+#         ba_children = Vector{Pair{O, Int}}(undef, N_OBS)
+#         poba = Vector{Float64}(undef, N_OBS)
+
+#         Rba = belief_reward(tree, b, a)
+#         Q̄ = Rba
+#         Q̲ = Rba
+
+#         for (o_idx, o) in enumerate(OBS)
+#             bp_idx, V̄, V̲ = update_and_push(tree, b_idx, a, o)
+#             b′ = tree.b[bp_idx]
+#             po = obs_prob(tree, b, a, o)
+#             ba_children[o_idx] = (o => bp_idx)
+#             poba[o_idx] = po
+#             Q̄ += γ*po*V̄
+#             Q̲ += γ*po*V̲
+#             if (bp_idx != -1)
+#                 push!(tree.b_parent, (b_idx, a_idx, o_idx)) #bp_idx => (b_idx, ba_idx, o_idx)
+#             else
+#                 @show bp_idx
+#             end
+#         end
+#         push!(tree.poba, poba)
+
+#         Qa_upper[a_idx] = a => Q̄
+#         Qa_lower[a_idx] = a => Q̲
+#     end
+#     tree.b_children[b_idx] = b_children
+#     tree.Qa_upper[b_idx] = Qa_upper
+#     tree.Qa_lower[b_idx] = Qa_lower
+#     nothing
+# end
+
 function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
-    !isempty(tree.b_children[b_idx]) && return
     γ = discount(tree.pomdp)
     ACT = tree.actions
     OBS = tree.observations
@@ -177,38 +257,74 @@ function fill_belief!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
     b = tree.b[b_idx]
     n_b = length(tree.b)
     n_ba = length(tree.ba_children)
+    if !isempty(tree.b_children[b_idx])
+        b_children = tree.b_children[b_idx]
+        Qa_upper = Vector{Pair{A, Float64}}(undef, length(ACT))
+        Qa_lower = Vector{Pair{A, Float64}}(undef, length(ACT))
+        for (a_idx,a) in enumerate(ACT)
+            # b_children[a_idx] = a => (n_ba + a_idx)
 
-    b_children = Vector{Pair{A, Int}}(undef, length(ACT))
-    Qa_upper = Vector{Pair{A, Float64}}(undef, length(ACT))
-    Qa_lower = Vector{Pair{A, Float64}}(undef, length(ACT))
-    for (a_idx,a) in enumerate(ACT)
-        b_children[a_idx] = a => (n_ba + a_idx)
+            # TODO: If all observations are always expanded, there's little to no need for a `o => bp_idx` pair
+            #       Just need nested vector mapping ba_idx => o_idx => bp_idx
+            Rba = belief_reward(tree, b, a)
+            Q̄ = Rba
+            Q̲ = Rba
 
-        # TODO: If all observations are always expanded, there's little to no need for a `o => bp_idx` pair
-        #       Just need nested vector mapping ba_idx => o_idx => bp_idx
-        ba_children = Vector{Pair{O, Int}}(undef, N_OBS)
-        poba = Vector{Float64}(undef, N_OBS)
+            for (o_idx, o) in enumerate(OBS)
+                bp_idx, V̄, V̲ = update(tree, b_idx, a, o)
+                b′ = tree.b[bp_idx]
+                po = obs_prob(tree, b, a, o)
+                Q̄ += γ*po*V̄
+                Q̲ += γ*po*V̲
+            end
 
-        Rba = belief_reward(tree, b, a)
-        Q̄ = Rba
-        Q̲ = Rba
-
-        for (o_idx, o) in enumerate(OBS)
-            bp_idx, V̄, V̲ = update_and_push(tree, b_idx, a, o)
-            b′ = tree.b[bp_idx]
-            po = obs_prob(tree, b, a, o)
-            ba_children[o_idx] = (o => bp_idx)
-            poba[o_idx] = po
-            Q̄ += γ*po*V̄
-            Q̲ += γ*po*V̲
+            Qa_upper[a_idx] = a => Q̄
+            Qa_lower[a_idx] = a => Q̲
         end
-        push!(tree.poba, poba)
+        tree.Qa_upper[b_idx] = Qa_upper
+        tree.Qa_lower[b_idx] = Qa_lower
+        nothing
+    else
+        b_children = Vector{Pair{A, Int}}(undef, length(ACT))
+        Qa_upper = Vector{Pair{A, Float64}}(undef, length(ACT))
+        Qa_lower = Vector{Pair{A, Float64}}(undef, length(ACT))
+        for (a_idx,a) in enumerate(ACT)
+            b_children[a_idx] = a => (n_ba + a_idx)
 
-        Qa_upper[a_idx] = a => Q̄
-        Qa_lower[a_idx] = a => Q̲
+            # TODO: If all observations are always expanded, there's little to no need for a `o => bp_idx` pair
+            #       Just need nested vector mapping ba_idx => o_idx => bp_idx
+            ba_children = Vector{Pair{O, Int}}(undef, N_OBS)
+            poba = Vector{Float64}(undef, N_OBS)
+
+            Rba = belief_reward(tree, b, a)
+            Q̄ = Rba
+            Q̲ = Rba
+
+            for (o_idx, o) in enumerate(OBS)
+                bp_idx, V̄, V̲ = update_and_push(tree, b_idx, a, o)
+                b′ = tree.b[bp_idx]
+                po = obs_prob(tree, b, a, o)
+                ba_children[o_idx] = (o => bp_idx)
+                poba[o_idx] = po
+                Q̄ += γ*po*V̄
+                Q̲ += γ*po*V̲
+                if (bp_idx != -1)
+                    push!(tree.b_parent, (b_idx, a_idx, o_idx)) #bp_idx => (b_idx, ba_idx, o_idx)
+                else
+                    @show bp_idx
+                end
+            end
+            push!(tree.poba, poba)
+
+            Qa_upper[a_idx] = a => Q̄
+            Qa_lower[a_idx] = a => Q̲
+        end
+        tree.b_children[b_idx] = b_children
+        tree.Qa_upper[b_idx] = Qa_upper
+        tree.Qa_lower[b_idx] = Qa_lower
+        nothing
     end
-    tree.b_children[b_idx] = b_children
-    tree.Qa_upper[b_idx] = Qa_upper
-    tree.Qa_lower[b_idx] = Qa_lower
-    nothing
+
+    tree.V_lower[b_idx] = lower_value(tree, tree.b[b_idx]);
+    tree.V_upper[b_idx] = maximum(x -> x.second, tree.Qa_upper[b_idx])
 end

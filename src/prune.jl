@@ -91,8 +91,14 @@ function prune_alpha!(tree::SARSOPTree, δ)
             =#
             if a1_dominant
                 pruned[j] = true
+                # b_idx = Γ[j].witnesses[1]
+                # Qba = dot(α_i, tree.b[b_idx])
+                # tree.Qa_lower[b_idx][actionindex(tree.pomdp, Γ[i].action)] = Γ[i].action => Qba
             elseif a2_dominant
                 pruned[i] = true
+                # b_idx = Γ[i].witnesses[1]
+                # Qba = dot(α_j, tree.b[b_idx])
+                # tree.Qa_lower[b_idx][actionindex(tree.pomdp, Γ[j].action)]  =  Γ[j].action => Qba
                 break
             end
         end

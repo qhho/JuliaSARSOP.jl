@@ -1,15 +1,15 @@
 # TODO
 
 - [ ] Bounds initialization
-  - [ ] Upper bound
+  - [x] Upper bound
     - [x] Fast Informed Bound
     - [x] $V_{MDP}$
-    - [ ] SAWTOOTH
+    - [x] SAWTOOTH
   - [x] Lower Bound (BAWS)
 - [ ] Bounds Updates
-  - [ ] Upper Bound
+  - [x] Upper Bound
   - [x] Lower bound (in `backup!`)
-- [ ] Pruning
+- [x] Pruning
 - [ ] Testing
   - [ ] Sample
   - [ ] Backup

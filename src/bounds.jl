@@ -21,7 +21,6 @@ function upper_value(tree::SARSOPTree, b::Vector{Float64})
     α_corner = tree.Vs_upper
     V_corner = dot(b, α_corner)
     V_upper = tree.V_upper
-
     v̂_min = Inf
     for (i,(bint, vint)) in enumerate(zip(tree.b, V_upper))
         tree.b_pruned[i] && continue
@@ -32,6 +31,33 @@ function upper_value(tree::SARSOPTree, b::Vector{Float64})
     return v̂_min
 end
 
+# function init_lower_value!(tree::SARSOPTree, pomdp::POMDP)
+#     A = tree.actions
+#     S = tree.states
+#     r = StateActionReward(pomdp)
+#     γ = discount(pomdp)
+#     b = tree.b[1] # root belief
+
+#     α_init = 1 / (1 - γ) * maximum(minimum(r(s, a) for s in S) for a in A)
+#     Γ = [fill(α_init, length(S)) for a in A]
+
+#     MAX_VAL = -Inf #dot(tree.Γ[1], b)
+#     MAX_ALPHA = Γ[1]
+#     ACTION = A[1]
+#     if length(Γ) > 1
+#         for (idx,α) in enumerate(Γ[2:end])
+#             new_val = dot(α, b)
+#             if new_val > MAX_VAL
+#                 MAX_VAL = new_val
+#                 MAX_ALPHA = α
+#                 ACTION = A[idx]
+#             end
+#         end
+#     end
+
+#     push!(tree.Γ, AlphaVec(MAX_ALPHA, ACTION, [1], [MAX_VAL]))
+# end
+
 function init_lower_value!(tree::SARSOPTree, pomdp::POMDP)
     A = tree.actions
     S = tree.states
@@ -41,22 +67,42 @@ function init_lower_value!(tree::SARSOPTree, pomdp::POMDP)
 
     α_init = 1 / (1 - γ) * maximum(minimum(r(s, a) for s in S) for a in A)
     Γ = [fill(α_init, length(S)) for a in A]
-
-    MAX_VAL = -Inf #dot(tree.Γ[1], b)
-    MAX_ALPHA = Γ[1]
-    ACTION = A[1]
-    if length(Γ) > 1
-        for (idx,α) in enumerate(Γ[2:end])
-            new_val = dot(α, b)
-            if new_val > MAX_VAL
-                MAX_VAL = new_val
-                MAX_ALPHA = α
-                ACTION = A[idx]
-            end
+    
+    # @show α_init
+    Qa_lower = Vector{Float64}[]
+    for (a_idx, a) in enumerate(A)
+        push!(Qa_lower, Float64[])
+            for (s_idx, s) in enumerate(S)
+            Qa = 1/ (1 - γ) * minimum(r(s′, a) for (p, s′) in transition(pomdp, s, a))
+            push!(Qa_lower[a_idx], Qa)
         end
     end
 
-    push!(tree.Γ, AlphaVec(MAX_ALPHA, ACTION, [1], [MAX_VAL]))
+    for _ in 1:100000
+        for (a_idx, a) in enumerate(A)
+            for (s_idx, s) in enumerate(S)
+                Qas = reward(pomdp, s, a)
+                for (p, s′) in transition(pomdp, s, a)
+                    Qas += γ*p*Qa_lower[a_idx][stateindex(pomdp, s′)]
+                end
+                Qa_lower[a_idx][s_idx] = Qas
+            end
+        end
+    end
+    # @show Qa_lower
+    if length(Qa_lower) > 1
+        for (idx,α) in enumerate(Qa_lower[1:end])
+            new_val = dot(α, b)
+            push!(tree.Γ, AlphaVec(α, A[idx], [1], [new_val]))
+        end
+    end
+    # new_val1 = dot([-58.3386, -68.3386], b)
+    # new_val2 = dot([-49.0379, -77.2038], b)
+
+    # push!(tree.Γ, AlphaVec([-58.3386, -68.3386], A[1], [1], [new_val1]))
+    # push!(tree.Γ, AlphaVec([-49.0379, -77.2038], A[2], [1], [new_val2]))
+    
+    # push!(tree.Γ, AlphaVec(MAX_ALPHA, ACTION, [1], [MAX_VAL]))
 end
 
 function lower_value(tree::SARSOPTree, b::Vector{Float64})
@@ -73,26 +119,43 @@ function lower_value(tree::SARSOPTree, b::Vector{Float64})
     return MAX_VAL
 end
 
-# Get upper bound value for each belief in tree
-function updateUpperBound!(tree::SARSOPTree, b::Int, ba_idx::Int, o_idx::Int, b_parent::Int)
-    #check b pruned
-    if b_parent > 0
-        oldV = tree.V_upper[b]
-        newV = maximum(x -> x.second, tree.Qa_upper[b])
-        tree.V_upper[b] = newV
-
-        ΔV = newV - oldV
-        ΔQ = tree._discount * tree.poba[ba_idx][o_idx] * ΔV
-        obs = tree.Qa_upper[b_parent].first
-        Q = tree.Qa_upper[b_parent].second
-        tree.Qa_upper[b_parent] = Pair(obs, Q + ΔQ)
+function updateUpperBound!(tree::SARSOPTree, b_idx::Int)
+    b = tree.b[b_idx]
+    b_children = tree.b_children[b_idx]
+    for (a_idx,a) in enumerate(tree.actions)
+        Rba = belief_reward(tree, b, a)
+        Q̄ = Rba
+        ba_idx = last(b_children[a_idx])
+        for (o_idx, o) in enumerate(tree.observations)
+            _, V̄, _ = update(tree, b_idx, a, o)
+            po = tree.poba[ba_idx][o_idx]
+            Q̄ += tree._discount*po*V̄
+        end
+        tree.Qa_upper[b_idx][a_idx] = a => Q̄
     end
+    tree.V_upper[b_idx] = maximum(x -> x.second, tree.Qa_upper[b_idx])
 end
 
+# function updateUpperBound!(tree::SARSOPTree, b::Int, ba_idx::Int, o_idx::Int, b_parent::Int)
+#     #check b pruned
+#     if b > 1
+#         oldV = tree.V_upper[b]
+#         newV = maximum(x -> x.second, tree.Qa_upper[b])
+#         tree.V_upper[b] = newV
+#         ΔV = newV - oldV
+#         ΔQ = tree._discount * tree.poba[ba_idx][o_idx] * ΔV
+#         obs = tree.Qa_upper[b_parent][ba_idx].first
+#         Q = tree.Qa_upper[b_parent][ba_idx].second
+#         tree.Qa_upper[b_parent][ba_idx] = Pair(obs, Q + ΔQ)
+#     else
+#         tree.V_upper[b] = maximum(x -> x.second, tree.Qa_upper[b])
+#     end
+# end
+
 function updateUpperBounds!(tree::SARSOPTree)
-    for b_sampled in tree.sampled
-        ba_idx, o_idx, b_parent = tree.b_parent[b_sampled]
-        updateUpperBound!(tree, b_sampled, ba_idx, o_idx, b_parent)
+    for b_sampled in reverse(tree.sampled)
+        # b_parent, ba_idx, o_idx = tree.b_parent[b_sampled]
+        updateUpperBound!(tree, b_sampled) #updateUpperBound!(tree, b_sampled, ba_idx, o_idx, b_parent)
     end
 end
 
