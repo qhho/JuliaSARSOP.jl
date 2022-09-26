@@ -14,13 +14,9 @@ function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP{S,A}) where {S,A}
     start_time = time()
     iterations = 0
     while time()-start_time < solver.max_time && root_diff(tree) > solver.precision
-        # @info "Running Sample"
         sample!(solver, tree)
-        # @info "Running Backup"
         backup!(tree)
-        # @info "Running Bounds Update"
-        updateUpperBounds!(tree)
-        # @info "Running Pruning"
+        update_upper_bounds!(tree)
         prune!(solver, tree)
         iterations += 1
     end

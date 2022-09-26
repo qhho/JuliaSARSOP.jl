@@ -66,6 +66,5 @@ function POMDPs.solve(sol::FastInformedBound, pomdp::POMDP)
         iter += 1
     end
 
-    # return AlphaVectorPolicy(pomdp, Γ, A)
-    return Γ
+    return AlphaVectorPolicy(pomdp, Γ, A)
 end

@@ -40,10 +40,10 @@ include("tree.jl")
         iterations += 1
         JSOP.sample!(solver, tree)
         JSOP.backup!(tree)
-        JSOP.updateUpperBounds!(tree)
+        JSOP.update_upper_bounds!(tree)
         JSOP.prune!(solver, tree)
     end
-    @test tree.V_lower[1] - 19.37 < 0.001
+    @test isapprox(tree.V_lower[1], 19.37; atol=1e-3)
     @test JSOP.root_diff(tree) < solver.precision
 
     solverCPP = SARSOP.SARSOPSolver(trial_improvement_factor = 0.5, precision = 1e-3, verbose = false);
@@ -62,10 +62,10 @@ end
         iterations += 1
         JSOP.sample!(solver, tree)
         JSOP.backup!(tree)
-        JSOP.updateUpperBounds!(tree)
+        JSOP.update_upper_bounds!(tree)
         JSOP.prune!(solver, tree)
     end
-    @test tree.V_lower[1] - 19.37 < 0.001
+    @test isapprox(tree.V_lower[1], -16.3; atol=1e-2)
     @test JSOP.root_diff(tree) < solver.precision
 
     solverCPP = SARSOP.SARSOPSolver(trial_improvement_factor = 0.5, precision = 1e-3, verbose = false);
