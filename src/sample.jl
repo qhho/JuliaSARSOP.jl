@@ -7,6 +7,11 @@ end
 
 function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t, ϵ)
     tree.b_pruned[b_idx] = false
+    if !tree.is_real[b_idx]
+        tree.is_real[b_idx] = true
+        push!(tree.real, b_idx)
+    end
+
     fill_belief!(tree, b_idx)
     V̲, V̄ = tree.V_lower[b_idx], tree.V_upper[b_idx]
     γ = discount(tree)
@@ -62,11 +67,12 @@ end
 function best_obs(tree::SARSOPTree, b_idx, ba_idx, ϵ, t)
     S = states(tree)
     O = observations(tree)
+    γ = discount(tree)
 
     best_o_idx = 0
     best_o = first(O)
     best_gap = -Inf
-    γ = tree._discount
+
 
     for (o_idx,o) in enumerate(O)
         poba = tree.poba[ba_idx][o_idx]

@@ -25,7 +25,8 @@ struct SARSOPTree{S,A,O,P<:POMDP}
     sampled::Vector{Int} # b_idx
     b_pruned::BitVector
     ba_pruned::BitVector
-    real::Vector{Int} #b_idx
+    real::Vector{Int} # b_idx
+    is_real::BitVector
 
     pomdp::P
     Γ::Vector{AlphaVec{A}}
@@ -60,9 +61,10 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         not_terminals,
         terminals,
         Int[],
-        BitVector(undef, 0),
-        BitVector(undef, 0),
-        Int[],
+        BitVector(),
+        BitVector(),
+        Vector{Int}(),
+        BitVector(),
         pomdp,
         AlphaVec{A}[]
     )
@@ -87,6 +89,7 @@ function insert_root!(tree::SARSOPTree{S,A}) where {S,A}
     push!(tree.b_parent, (0, 0, 0))
     push!(tree.V_upper, init_root_value(tree, b))
     push!(tree.real, 1)
+    push!(tree.is_real, true)
     init_lower_value!(tree, pomdp)
     push!(tree.V_lower, lower_value(tree, b))
     push!(tree.Qa_upper, Pair{A, Float64}[])
@@ -148,6 +151,7 @@ function add_belief!(tree::SARSOPTree{S,A,O}, b, ba_idx::Int, o::O) where {S,A,O
     b_idx = length(tree.b)
     push!(tree.ba_children[ba_idx], o=>b_idx)
     push!(tree.b_children, Pair{A, Int}[])
+    push!(tree.is_real, false)
     push!(tree.Qa_upper, Pair{A, Float64}[])
     push!(tree.Qa_lower, Pair{A, Float64}[])
     V_upper = upper_value(tree, b)
