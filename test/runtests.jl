@@ -7,6 +7,8 @@ using Test
 using POMDPs
 import SARSOP
 
+# lil bit of testing type piracy
+JSOP.SARSOPTree(pomdp::POMDP) = JSOP.SARSOPTree(SARSOPSolver(), pomdp)
 
 @testset "Basic Functionality" begin
     pomdp = TigerPOMDP()

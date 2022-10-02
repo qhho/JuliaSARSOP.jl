@@ -32,10 +32,8 @@ struct SARSOPTree{S,A,O,P<:POMDP}
     Γ::Vector{AlphaVec{A}}
 end
 
-function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
-    fib_solver = FastInformedBound(500)
-    upper_policy = solve(fib_solver, pomdp)
-
+function SARSOPTree(solver, pomdp::POMDP{S,A,O}) where {S,A,O}
+    upper_policy = solve(solver.init_upper, pomdp)
     corner_values = map(maximum, zip(upper_policy.alphas...))
 
     not_terminals = Int[stateindex(pomdp, s) for s in states(pomdp) if !isterminal(pomdp, s)]
@@ -68,7 +66,7 @@ function SARSOPTree(pomdp::POMDP{S,A,O}) where {S,A,O}
         pomdp,
         AlphaVec{A}[]
     )
-    return insert_root!(tree)
+    return insert_root!(solver, tree)
 end
 
 POMDPs.states(tree::SARSOPTree) = ordered_states(tree)
@@ -80,17 +78,23 @@ POMDPTools.ordered_observations(tree::SARSOPTree) = tree.observations
 
 POMDPs.discount(tree) = discount(tree.pomdp)
 
-function insert_root!(tree::SARSOPTree{S,A}) where {S,A}
+function insert_root!(solver, tree::SARSOPTree{S,A}) where {S,A}
     pomdp = tree.pomdp
     b0 = initialstate(pomdp)
     b = initialize_belief(DiscreteUpdater(pomdp), b0).b
+
+    Γ_lower = solve(solver.init_lower, pomdp)
+    for (α,a) ∈ alphapairs(Γ_lower)
+        new_val = dot(α, b)
+        push!(tree.Γ, AlphaVec(α, a, [1], [new_val]))
+    end
+
     push!(tree.b, b)
     push!(tree.b_children, Pair{A, Int}[])
     push!(tree.b_parent, (0, 0, 0))
     push!(tree.V_upper, init_root_value(tree, b))
     push!(tree.real, 1)
     push!(tree.is_real, true)
-    init_lower_value!(tree, pomdp)
     push!(tree.V_lower, lower_value(tree, b))
     push!(tree.Qa_upper, Pair{A, Float64}[])
     push!(tree.Qa_lower, Pair{A, Float64}[])

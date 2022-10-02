@@ -5,7 +5,7 @@ end
 
 # https://github.com/JuliaPOMDP/BeliefUpdaters.jl/blob/afa7d80e47631340cb210548a0e2dc8a73886e2d/src/discrete.jl#L111
 # inplace in case we want to cache beliefs prior to search
-function _update!(bp, tree::SARSOPTree, b::Vector{Float64}, a::A, o::O) where {S,A,O}
+function _update!(bp, tree::SARSOPTree{S,A,O}, b::Vector{Float64}, a::A, o::O) where {S,A,O}
     bp_sum = 0.0
     pomdp = tree.pomdp
 

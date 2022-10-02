@@ -1,4 +1,4 @@
-Base.@kwdef struct SARSOPSolver <: Solver
+Base.@kwdef struct SARSOPSolver{UP,LOW} <: Solver
     epsilon::Float64    = 0.5
     precision::Float64  = 1e-3
     kappa::Float64      = 0.5
@@ -6,10 +6,12 @@ Base.@kwdef struct SARSOPSolver <: Solver
     max_time::Float64   = 1.0
     max_steps::Int      = typemax(Int)
     verbose::Bool       = true
+    init_lower::UP      = BlindLowerBound()
+    init_upper::LOW     = FastInformedBound()
 end
 
 function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP{S,A}) where {S,A}
-    tree = SARSOPTree(pomdp)
+    tree = SARSOPTree(solver, pomdp)
 
     t0 = time()
     iterations = 0

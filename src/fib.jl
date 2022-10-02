@@ -7,16 +7,27 @@ Same applies to using QMDP as an upper bound, but provided that the upper bound 
 used (relative to lower bound) to guide search as well as determining convergence
 the detriment to the final policy may be minor.
 =#
-struct FastInformedBound
-    max_iter::Int
-    max_time::Float64
-    init_value::Float64
-    α_tmp::Vector{Float64}
-    FastInformedBound(n; init_value=0., max_time=Inf) = new(n, max_time, init_value, Float64[])
+Base.@kwdef struct FastInformedBound <: Solver
+    max_iter::Int               = typemax(Int)
+    max_time::Float64           = 1.
+    bel_res::Float64            = 1e-3
+    init_value::Float64         = 0.
+    α_tmp::Vector{Float64}      = Float64[]
+    residuals::Vector{Float64}  = Float64[]
+end
+
+function bel_res(α1, α2)
+    max_res = 0.
+    @inbounds for i ∈ eachindex(α1, α2)
+        res = abs(α1[i] - α2[i])
+        res > max_res && (max_res = res)
+    end
+    return max_res
 end
 
 function update!(𝒫::POMDP, M::FastInformedBound, Γ, 𝒮, 𝒜, 𝒪)
     γ = discount(𝒫)
+    residuals = M.residuals
 
     for (a_idx, a) ∈ enumerate(𝒜)
         α_a = M.α_tmp
@@ -38,6 +49,8 @@ function update!(𝒫::POMDP, M::FastInformedBound, Γ, 𝒮, 𝒜, 𝒪)
             end
             α_a[s_idx] = reward(𝒫, s, a) + γ*tmp
         end
+        res = bel_res(Γ[a_idx], α_a)
+        residuals[a_idx] = res
         copyto!(Γ[a_idx], α_a)
     end
     return Γ
@@ -52,18 +65,21 @@ function POMDPs.solve(sol::FastInformedBound, pomdp::POMDP)
 
     init_value = sol.init_value
     Γ = if isfinite(sol.init_value)
-        [fill(sol.init_value, length(S)) for a in A]
+        [fill(sol.init_value, length(S)) for a ∈ A]
     else
-        r_max = maximum(reward(pomdp, s, a) for a ∈ actions(pomdp), s ∈ states(pomdp))
+        r_max = maximum(reward(pomdp, s, a) for a ∈ A, s ∈ S)
         V̄ = r_max/(1-γ)
-        [fill(V̄, length(S)) for a in A]
+        [fill(V̄, length(S)) for a ∈ A]
     end
     resize!(sol.α_tmp, length(S))
+    residuals = resize!(sol.residuals, length(A))
 
     iter = 0
+    res_criterion = <(sol.bel_res)
     while iter < sol.max_iter && time() - t0 < sol.max_time
         update!(pomdp, sol, Γ, S, A, O)
         iter += 1
+        all(res_criterion,residuals) && break
     end
 
     return AlphaVectorPolicy(pomdp, Γ, A)

@@ -33,38 +33,6 @@ function upper_value(tree::SARSOPTree, b::Vector{Float64})
     return v̂_min
 end
 
-function init_lower_value!(tree::SARSOPTree, pomdp::POMDP)
-    S = states(tree)
-    A = actions(tree)
-    r = StateActionReward(pomdp)
-    γ = discount(pomdp)
-    b = tree.b[1] # root belief
-
-    Qa_lower = [zeros(length(S)) for _ in eachindex(A)]
-    for (a_idx, a) in enumerate(A)
-        for (s_idx, s) in enumerate(S)
-            Qa = 1 / (1 - γ) * minimum(r(s′, a) for (p, s′) in transition(pomdp, s, a))
-            Qa_lower[a_idx][s_idx] = Qa
-        end
-    end
-
-    for _ in 1:100000
-        for (a_idx, a) in enumerate(A)
-            for (s_idx, s) in enumerate(S)
-                Qas = reward(pomdp, s, a)
-                for (p, s′) in transition(pomdp, s, a)
-                    Qas += γ*p*Qa_lower[a_idx][stateindex(pomdp, s′)]
-                end
-                Qa_lower[a_idx][s_idx] = Qas
-            end
-        end
-    end
-    for (idx,α) in enumerate(Qa_lower)
-        new_val = dot(α, b)
-        push!(tree.Γ, AlphaVec(α, A[idx], [1], [new_val]))
-    end
-end
-
 function lower_value(tree::SARSOPTree, b::Vector{Float64})
     MAX_VAL = -Inf
     for α in tree.Γ
