@@ -12,6 +12,8 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t,
         push!(tree.real, b_idx)
     end
 
+    tree.is_terminal[b_idx] && return
+
     fill_belief!(tree, b_idx)
     V̲, V̄ = tree.V_lower[b_idx], tree.V_upper[b_idx]
     γ = discount(tree)

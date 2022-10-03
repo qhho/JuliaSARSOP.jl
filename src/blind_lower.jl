@@ -14,7 +14,7 @@ function update!(pomdp::POMDP, M::BlindLowerBound, Γ, S, A, O)
         α_a = M.α_tmp
         for (s_idx, s) in enumerate(S)
             Qas = reward(pomdp, s, a)
-            for (p, s′) in transition(pomdp, s, a)
+            for (s′, p) in weighted_iterator(transition(pomdp, s, a))
                 Qas += γ*p*Γ[a_idx][stateindex(pomdp, s′)]
             end
             α_a[s_idx] = Qas
@@ -31,7 +31,7 @@ function worst_state_alphas(pomdp::POMDP, S, A)
     Γ = [zeros(length(S)) for _ in eachindex(A)]
     for (a_idx, a) in enumerate(A)
         for (s_idx, s) in enumerate(S)
-            Qa = 1 / (1 - γ) * minimum(reward(pomdp, s′, a) for (p, s′) in transition(pomdp, s, a))
+            Qa = 1 / (1 - γ) * minimum(reward(pomdp, s′, a) for (s′, p) in weighted_iterator(transition(pomdp, s, a)))
             Γ[a_idx][s_idx] = Qa
         end
     end

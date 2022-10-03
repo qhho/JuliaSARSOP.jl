@@ -17,9 +17,8 @@ struct SARSOPTree{S,A,O,P<:POMDP}
     poba::Vector{Vector{Float64}} # ba_idx => o_idx
 
     _discount::Float64
-
-    not_terminals::Vector{Int}
-    terminals::Vector{Int}
+    is_terminal::BitVector
+    terminal_s_idxs::Vector{Int}
 
     #do we need both b_pruned and ba_pruned? b_pruned might be enough
     sampled::Vector{Int} # b_idx
@@ -33,16 +32,18 @@ struct SARSOPTree{S,A,O,P<:POMDP}
 end
 
 function SARSOPTree(solver, pomdp::POMDP{S,A,O}) where {S,A,O}
+    ordered_s = collect(ordered_states(pomdp))
+    ordered_a = collect(ordered_actions(pomdp))
+    ordered_o = collect(ordered_observations(pomdp))
+
     upper_policy = solve(solver.init_upper, pomdp)
     corner_values = map(maximum, zip(upper_policy.alphas...))
-
-    not_terminals = Int[stateindex(pomdp, s) for s in states(pomdp) if !isterminal(pomdp, s)]
-    terminals = Int[stateindex(pomdp, s) for s in states(pomdp) if isterminal(pomdp, s)]
+    terminals = filter(i->isterminal(pomdp, ordered_s[i]), eachindex(ordered_s))
 
     tree = SARSOPTree(
-        collect(ordered_states(pomdp)),
-        collect(ordered_actions(pomdp)),
-        collect(ordered_observations(pomdp)),
+        ordered_s,
+        ordered_a,
+        ordered_o,
 
         Vector{Float64}[],
         Vector{Pair{A,Int}}[],
@@ -56,7 +57,7 @@ function SARSOPTree(solver, pomdp::POMDP{S,A,O}) where {S,A,O}
         A[],
         Vector{Float64}[],
         discount(pomdp),
-        not_terminals,
+        BitVector(),
         terminals,
         Int[],
         BitVector(),
@@ -99,6 +100,7 @@ function insert_root!(solver, tree::SARSOPTree{S,A}) where {S,A}
     push!(tree.Qa_upper, Pair{A, Float64}[])
     push!(tree.Qa_lower, Pair{A, Float64}[])
     push!(tree.b_pruned, false)
+    push!(tree.is_terminal, is_terminal_belief(b, tree.terminal_s_idxs))
     fill_belief!(tree, 1)
     return tree
 end
@@ -111,13 +113,32 @@ function update_and_push(tree::SARSOPTree, b_idx::Int, a, o)
     V_lower = -Inf
     if ba_idx === -1
         ba_idx = add_action!(tree, b_idx, a)
-        b′ = update(tree, b, a, o)
+        b′ = update_and_shift(tree, b, a, o)
         bp_idx, V_upper, V_lower = add_belief!(tree, b′, ba_idx, o)
     else
         bp_idx = ba_child(tree, ba_idx, o)
         if bp_idx === -1
-            b′ = update(tree, b, a, o)
+            b′ = update_and_shift(tree, b, a, o)
             bp_idx, V_upper, V_lower = add_belief!(tree, b′, ba_idx, o)
+        end
+    end
+    return bp_idx, V_upper, V_lower
+end
+
+function update_and_push_null(tree::SARSOPTree, b_idx::Int, a, o)
+    b = tree.b[b_idx]
+    ba_idx = b_child(tree, b_idx, a)
+    bp_idx = -1
+    V_upper = 0.
+    V_lower = 0.
+    b′ = zero(b)
+    if ba_idx === -1
+        ba_idx = add_action!(tree, b_idx, a)
+        bp_idx, V_upper, V_lower = add_belief_null!(tree, b′, ba_idx, o)
+    else
+        bp_idx = ba_child(tree, ba_idx, o)
+        if bp_idx === -1
+            bp_idx, V_upper, V_lower = add_belief_null!(tree, b′, ba_idx, o)
         end
     end
     return bp_idx, V_upper, V_lower
@@ -160,6 +181,24 @@ function add_belief!(tree::SARSOPTree{S,A,O}, b, ba_idx::Int, o::O) where {S,A,O
     push!(tree.Qa_lower, Pair{A, Float64}[])
     V_upper = upper_value(tree, b)
     V_lower = lower_value(tree, b)
+    push!(tree.is_terminal, is_terminal_belief(b, tree.terminal_s_idxs))
+    push!(tree.V_upper, V_upper)
+    push!(tree.V_lower, V_lower)
+    push!(tree.b_pruned, true)
+    return b_idx, V_upper, V_lower
+end
+
+function add_belief_null!(tree::SARSOPTree{S,A,O}, b, ba_idx::Int, o::O) where {S,A,O}
+    push!(tree.b, b)
+    b_idx = length(tree.b)
+    push!(tree.ba_children[ba_idx], o=>b_idx)
+    push!(tree.b_children, Pair{A, Int}[])
+    push!(tree.is_real, false)
+    push!(tree.Qa_upper, Pair{A, Float64}[])
+    push!(tree.Qa_lower, Pair{A, Float64}[])
+    V_upper = 0.
+    V_lower = 0.
+    push!(tree.is_terminal, true)
     push!(tree.V_upper, V_upper)
     push!(tree.V_lower, V_lower)
     push!(tree.b_pruned, true)
@@ -257,9 +296,14 @@ function fill_unpopulated!(tree::SARSOPTree{S,A,O}, b_idx::Int) where {S,A,O}
         Q̲ = Rba
 
         for (o_idx, o) in enumerate(OBS)
-            bp_idx, V̄, V̲ = update_and_push(tree, b_idx, a, o)
-            b′ = tree.b[bp_idx]
             po = obs_prob(tree, b, a, o)
+
+            bp_idx, V̄, V̲ = if !iszero(po)
+                update_and_push(tree, b_idx, a, o)
+            else
+                update_and_push_null(tree, b_idx, a, o)
+            end
+            b′ = tree.b[bp_idx]
             ba_children[o_idx] = (o => bp_idx)
             poba[o_idx] = po
             Q̄ += γ*po*V̄
