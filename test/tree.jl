@@ -47,7 +47,6 @@
         @test length(tree.Qa_lower) == n_b
         @test length(tree.ba_action) == n_ba
         @test length(tree.poba) == n_ba
-        @test length(tree.not_terminals) + length(tree.terminals) == length(S)
         @test length(tree.b_pruned) == n_b
         @test length(tree.ba_pruned) == n_ba
     end
