@@ -18,7 +18,7 @@ function max_alpha_val(Γ, b)
     max_α = first(Γ)
     max_val = -Inf
     for α ∈ Γ
-        val = dot(α.alpha, b)
+        val = dot(α, b)
         if val > max_val
             max_α = α
             max_val = val
@@ -33,7 +33,7 @@ function backup_belief(tree::SARSOPTree, node::Int)
     A = actions(tree)
     O = observations(tree)
     pomdp = tree.pomdp
-    γ = tree._discount
+    γ = discount(tree)
     Γ = tree.Γ
     Γa = Vector{Vector{Float64}}(undef, length(A))
 
@@ -117,9 +117,9 @@ function backup!(tree, b_idx)
     Γao = Matrix{Vector{Float64}}(undef, length(A), length(O))
 
     for (a_idx, a) ∈ enumerate(A)
-        _, ba_idx = tree.b_children[b_idx][a_idx]
+        ba_idx = tree.b_children[b_idx][a_idx]
         for (o_idx,o) ∈ enumerate(O)
-            _, bp_idx = tree.ba_children[ba_idx][o_idx]
+            bp_idx = tree.ba_children[ba_idx][o_idx]
             bp = tree.b[bp_idx]
             Γao[a_idx, o_idx] = max_alpha_val(Γ, bp)
         end
@@ -130,26 +130,26 @@ function backup!(tree, b_idx)
     best_α = zeros(Float64, length(S))
     best_action = first(A)
 
-    for (a_idx, a) ∈ enumerate(A)
-        for (s_idx, s) ∈ enumerate(S)
+    for a ∈ A
+        for s ∈ S
             rsa = reward(pomdp, s, a)
             T = transition(pomdp, s, a)
             tmp = 0.0
-            for (sp_idx, sp) ∈ enumerate(S)
+            for sp ∈ S
                 Tsas′ = pdf(T,sp)
                 if Tsas′ > 0.
                     Z = observation(pomdp, s, a, sp)
-                    for (o_idx,o) ∈ enumerate(O)
+                    for o ∈ O
                         Zspao = pdf(Z, o)
-                        α_ao = Γao[a_idx, o_idx]
-                        tmp += Tsas′*Zspao*α_ao[sp_idx]
+                        α_ao = Γao[a, o]
+                        tmp += Tsas′*Zspao*α_ao[sp]
                     end
                 end
             end
-            α_a[s_idx] = rsa + γ*tmp
+            α_a[s] = rsa + γ*tmp
         end
         Qba = dot(α_a, b)
-        tree.Qa_lower[b_idx][a_idx] = a => Qba
+        tree.Qa_lower[b_idx][a] = Qba
         if Qba > V
             V = Qba
             best_α .= α_a

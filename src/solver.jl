@@ -10,7 +10,7 @@ Base.@kwdef struct SARSOPSolver{UP,LOW} <: Solver
     init_upper::LOW     = FastInformedBound()
 end
 
-function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP{S,A}) where {S,A}
+function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP)
     tree = SARSOPTree(solver, pomdp)
 
     t0 = time()
@@ -25,6 +25,6 @@ function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP{S,A}) where {S,A}
     return AlphaVectorPolicy(
         pomdp,
         getproperty.(tree.Γ, :alpha),
-        getproperty.(tree.Γ, :action)
+        ordered_actions(pomdp)[getproperty.(tree.Γ, :action)]
     )
 end
