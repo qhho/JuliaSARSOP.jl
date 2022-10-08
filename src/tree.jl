@@ -12,6 +12,10 @@ struct SARSOPTree{S,A,O,P<:POMDP}
     Qa_upper::Vector{Vector{Pair{A, Float64}}}
     Qa_lower::Vector{Vector{Pair{A, Float64}}}
 
+    bins::Vector{Vector{Vector{Float64}}}
+    bin_ents::Vector{Float64}
+    bel_bins::Vector{Pair{Int64, Tuple{Int64, Int64}}}
+
     ba_children::Vector{Vector{Pair{O,Int}}} # (ba_idx, o) => bp_idx # deleted nodes have (o, 0) pairs for first element
     ba_action::Vector{A}
     poba::Vector{Vector{Float64}} # ba_idx => o_idx
@@ -40,6 +44,8 @@ function SARSOPTree(solver, pomdp::POMDP{S,A,O}) where {S,A,O}
     corner_values = map(maximum, zip(upper_policy.alphas...))
     terminals = filter(i->isterminal(pomdp, ordered_s[i]), eachindex(ordered_s))
 
+    bins,bin_ents = initialize_bins(ordered_s,solver.bin_threshold)
+
     tree = SARSOPTree(
         ordered_s,
         ordered_a,
@@ -53,6 +59,9 @@ function SARSOPTree(solver, pomdp::POMDP{S,A,O}) where {S,A,O}
         Float64[],
         Vector{Pair{A, Float64}}[],
         Vector{Pair{A, Float64}}[],
+        bins,
+        bin_ents,
+        Pair{Int64, Tuple{Int64, Int64}}[],
         Vector{Pair{O,Int}}[],
         A[],
         Vector{Float64}[],

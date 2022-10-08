@@ -6,6 +6,7 @@ Base.@kwdef struct SARSOPSolver{UP,LOW} <: Solver
     max_time::Float64   = 1.0
     max_steps::Int      = typemax(Int)
     verbose::Bool       = true
+    bin_threshold::Float64 = 0.1
     init_lower::UP      = BlindLowerBound()
     init_upper::LOW     = FastInformedBound()
 end
