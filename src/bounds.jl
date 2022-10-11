@@ -19,10 +19,15 @@ sparse_min_ratio(b_cache, v1, v2) = minimum(b_cache .= safe_div.(v1,v2))
 
 function min_ratio(v1, v2)
     min_ratio = Inf
-    for (a,b) ∈ zip(v1, v2)
-        ratio = a/b
+    I,V = v2.nzind, v2.nzval
+    for (_i,i) ∈ enumerate(I)
+        ratio = v1[i] / V[_i]
         ratio < min_ratio && (min_ratio = ratio)
     end
+    # for (a,b) ∈ zip(v1, v2)
+    #     ratio = a/b
+    #     ratio < min_ratio && (min_ratio = ratio)
+    # end
     return min_ratio
 end
 

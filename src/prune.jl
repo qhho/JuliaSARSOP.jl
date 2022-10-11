@@ -59,10 +59,11 @@ end
 function intersection_distance(α1, α2, b)
     s = 0.0
     dot_sum = 0.0
-    @inbounds for i ∈ eachindex(α1, α2, b)
+    I,B = b.nzind, b.nzval
+    for (_i,i) ∈ enumerate(I)
         diff = α1[i] - α2[i]
         s += abs2(diff)
-        dot_sum += diff*b[i]
+        dot_sum += diff*B[_i]
     end
     return dot_sum / sqrt(s)
 end
