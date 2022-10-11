@@ -56,7 +56,7 @@ function update!(𝒫::POMDP, M::FastInformedBound, Γ, 𝒮, 𝒜, 𝒪)
     return Γ
 end
 
-function update!(𝒫::SparseTabularPOMDP, M::FastInformedBound, Γ, 𝒮, 𝒜, 𝒪)
+function update!(𝒫::ModifiedSparseTabular, M::FastInformedBound, Γ, 𝒮, 𝒜, 𝒪)
     (;R,T,O) = 𝒫
     γ = discount(𝒫)
     residuals = M.residuals

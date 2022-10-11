@@ -27,13 +27,37 @@ function max_alpha_val(Γ, b)
     return max_α.alpha
 end
 
-function backup_a!(α, pomdp::SparseTabularPOMDP, a, Γao)
+function backup_a!(α, pomdp::ModifiedSparseTabular, a, Γao)
     γ = discount(pomdp)
     R = @view pomdp.R[:,a]
-    T = pomdp.T[a]
-    Z = pomdp.O[a]
+    T_a = pomdp.T[a]
+    Z_a = pomdp.O[a]
     Γa = @view Γao[:,:,a]
-    @tullio α[s] = T[sp,s]*Z[sp,o]*Γa[sp,o]
+
+    Tnz = nonzeros(T_a)
+    Trv = rowvals(T_a)
+    Znz = nonzeros(Z_a)
+    Zrv = rowvals(Z_a)
+
+    for s ∈ eachindex(α)
+        v = 0.0
+        for sp_idx ∈ nzrange(T_a, s)
+            sp = Trv[sp_idx]
+            p = Tnz[sp_idx]
+            tmp = 0.0
+            for o ∈ observations(pomdp)
+                tmp += Z_a[sp,o]*Γa[sp, o]
+            end
+            v += tmp*p
+            # for o_idx ∈ nzrange(O_a, sp)
+            #     o = Zrv[o_idx]
+            #     po = Znz[o_idx]
+            #     tmp += po*Γ[a][sp]
+            # end
+        end
+        α[s] = v
+    end
+    # @tullio α[s] = T[sp,s]*Z[sp,o]*Γa[sp,o]
     @. α = R + γ*α
 end
 

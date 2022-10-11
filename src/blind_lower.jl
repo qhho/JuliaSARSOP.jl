@@ -49,7 +49,7 @@ function transitions(pomdp::SparseTabularPOMDP, s, a)
     return zip(@view(rv[nzr]), @view(nz[nzr]))
 end
 
-function update!(pomdp::SparseTabularPOMDP, M::BlindLowerBound, Γ, S, A, _)
+function update!(pomdp::ModifiedSparseTabular, M::BlindLowerBound, Γ, S, A, _)
     residuals = M.residuals
     (;T,R,O) = pomdp
     γ = discount(pomdp)
@@ -102,7 +102,7 @@ function worst_state_alphas(pomdp::POMDP, S, A)
     return Γ
 end
 
-function worst_state_alphas(pomdp::SparseTabularPOMDP)
+function worst_state_alphas(pomdp::ModifiedSparseTabular, S, A)
     (;R,T) = pomdp
     S = states(pomdp)
     A = actions(pomdp)

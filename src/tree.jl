@@ -1,5 +1,5 @@
 struct SARSOPTree
-    pomdp::SparseTabularPOMDP
+    pomdp::ModifiedSparseTabular
 
     b::Vector{SparseVector{Float64,Int}} # b_idx => belief vector
     b_children::Vector{UnitRange{Int}} # [b_idx][a_idx] => ba_idx
@@ -28,28 +28,14 @@ struct SARSOPTree
     Γ::Vector{AlphaVec{Int}}
 end
 
-function ModifiedSparseTabular(pomdp::POMDP)
-    sparse_pomdp = SparseTabularPOMDP(pomdp)
-
-    # oh fuck that's [one]hot
-    map!(sparse ∘ transpose, sparse_pomdp.T, sparse_pomdp.T)
-    return sparse_pomdp
-end
-
 
 function SARSOPTree(solver, pomdp::POMDP)
     sparse_pomdp = ModifiedSparseTabular(pomdp)
-
-    # not too sure about this, but the -Inf in SparseTabular reward breaks initialization
-    replace!(sparse_pomdp.R) do x
-        isinf(x) ? 0.0 : x
-    end
-
     ordered_s = ordered_states(pomdp)
 
     upper_policy = solve(solver.init_upper, sparse_pomdp)
     corner_values = map(maximum, zip(upper_policy.alphas...))
-    terminals = collect(sparse_pomdp.terminal_states)
+    terminals = findall(sparse_pomdp.isterminal)
 
     tree = SARSOPTree(
         sparse_pomdp,
@@ -86,7 +72,7 @@ POMDPs.actions(tree::SARSOPTree) = ordered_actions(tree)
 POMDPTools.ordered_actions(tree::SARSOPTree) = actions(tree.pomdp)
 POMDPs.observations(tree::SARSOPTree) = ordered_observations(tree)
 POMDPTools.ordered_observations(tree::SARSOPTree) = observations(tree.pomdp)
-POMDPs.discount(tree) = discount(tree.pomdp)
+POMDPs.discount(tree::SARSOPTree) = discount(tree.pomdp)
 
 function _initialize_belief(pomdp::POMDP, dist::Any=initialstate(pomdp))
     ns = length(states(pomdp))
