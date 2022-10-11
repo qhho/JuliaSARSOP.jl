@@ -6,8 +6,8 @@ Base.@kwdef struct SARSOPSolver{UP,LOW} <: Solver
     max_time::Float64   = 1.0
     max_steps::Int      = typemax(Int)
     verbose::Bool       = true
-    init_lower::UP      = BlindLowerBound()
-    init_upper::LOW     = FastInformedBound()
+    init_lower::UP      = BlindLowerBound(bel_res = 1e-2)
+    init_upper::LOW     = FastInformedBound(bel_res = 1e-2)
 end
 
 function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP)

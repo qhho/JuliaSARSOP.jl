@@ -7,6 +7,16 @@ function init_root_value(tree::SARSOPTree, b::Vector{Float64})
     return value
 end
 
+function safe_div(a,b)
+    return if iszero(a) && iszero(b)
+        Inf
+    else
+        a/b
+    end
+end
+
+sparse_min_ratio(b_cache, v1, v2) = minimum(b_cache .= safe_div.(v1,v2))
+
 function min_ratio(v1, v2)
     min_ratio = Inf
     for (a,b) ∈ zip(v1, v2)
@@ -16,7 +26,8 @@ function min_ratio(v1, v2)
     return min_ratio
 end
 
-function upper_value(tree::SARSOPTree, b::Vector{Float64})
+function upper_value(tree::SARSOPTree, b::AbstractVector)
+    b_cache = Vector{Float64}(undef, length(b))
     α_corner = tree.Vs_upper
     V_corner = dot(b, α_corner)
     V_upper = tree.V_upper
@@ -33,7 +44,7 @@ function upper_value(tree::SARSOPTree, b::Vector{Float64})
     return v̂_min
 end
 
-function lower_value(tree::SARSOPTree, b::Vector{Float64})
+function lower_value(tree::SARSOPTree, b::AbstractVector)
     MAX_VAL = -Inf
     for α in tree.Γ
         new_val = dot(α, b)
@@ -47,13 +58,13 @@ end
 function update_upper_bound!(tree::SARSOPTree, b_idx::Int)
     b = tree.b[b_idx]
     b_children = tree.b_children[b_idx]
-    for (a_idx,a) in enumerate(tree.actions)
+    for a in tree.actions
         Rba = belief_reward(tree, b, a)
         Q̄ = Rba
-        ba_idx = last(b_children[a_idx])
-        for (o_idx, o) in enumerate(tree.observations)
+        ba_idx = b_children[a_idx]
+        for o in observations(tree)
             _, V̄, _ = update(tree, b_idx, a, o)
-            po = tree.poba[ba_idx][o_idx]
+            po = tree.poba[ba_idx][o]
             Q̄ += tree._discount*po*V̄
         end
         tree.Qa_upper[b_idx][a_idx] = a => Q̄

@@ -27,82 +27,15 @@ function max_alpha_val(Γ, b)
     return max_α.alpha
 end
 
-function backup_belief(tree::SARSOPTree, node::Int)
-    b = tree.b[node]
-    S = states(tree)
-    A = actions(tree)
-    O = observations(tree)
-    pomdp = tree.pomdp
-    γ = discount(tree)
-    Γ = tree.Γ
-    Γa = Vector{Vector{Float64}}(undef, length(A))
-
-    terminals = tree.terminals
-    not_terminals = tree.not_terminals
-
-    for (a_idx, a) in enumerate(A)
-        Γao = Vector{Vector{Float64}}(undef, length(O))
-        trans_probs = dropdims(sum([pdf(transition(pomdp, S[is], a), sp) * b[is] for sp in S, is in not_terminals], dims=2), dims=2)
-        for (o_idx,o) in enumerate(O)
-            obs_probs = pdf.(map(sp -> observation(pomdp, a, sp), S), [o])
-            b′ = obs_probs .* trans_probs
-            if sum(b′) > 0.
-                b′ = belief_norm(b, b′, terminals, not_terminals)
-            else
-                b′ = zeros(length(S))
-            end
-
-            # extract optimal alpha vector at resulting belief
-            Γao[o_idx] = max_alpha_val(Γ, b′)
-        end
-
-        Γs = Vector{Float64}(undef, length(S))
-        for (s_idx, s) in enumerate(S)
-            if isterminal(pomdp, s)
-                Γs[s_idx] = 0.0
-            else
-                tmp = 0.0
-                for (i, o) in enumerate(O)
-                    for (j, sp) in enumerate(S)
-                        tmp += pdf(transition(pomdp, s, a), sp) * pdf(observation(pomdp, s, a, sp), o) * Γao[i][j]
-                    end
-                end
-                Γs[s_idx] =  reward(pomdp, s, a) + γ*tmp
-            end
-        end
-        Γa[a_idx] = Γs
-    end
-
-    # val,idx = findmax(map(αa -> αa ⋅ b, Γa))
-
-    idx_max = 0
-    v_max = -Inf
-    for i ∈ eachindex(Γa)
-        Qba = dot(Γa[i], b)
-        ba_idx = tree.b_children[node][i].second
-        tree.Qa_lower[node][i] = tree.Qa_lower[node][i].first => Qba
-        if Qba > v_max
-            v_max = Qba
-            idx_max = i
-        end
-    end
-
-    tree.V_lower[node] = v_max
-
-    alphavec = AlphaVec(Γa[idx_max],A[idx_max],[node],[v_max])
-    return alphavec
+function backup_a!(α, pomdp::SparseTabularPOMDP, a, Γao)
+    γ = discount(pomdp)
+    R = @view pomdp.R[:,a]
+    T = pomdp.T[a]
+    Z = pomdp.O[a]
+    Γa = @view Γao[:,:,a]
+    @tullio α[s] = T[sp,s]*Z[sp,o]*Γa[sp,o]
+    @. α = R + γ*α
 end
-
-function tree_backup!(Γnew::Vector{<:AlphaVec}, tree::SARSOPTree)
-    resize!(Γnew,length(tree.sampled))
-    for (i,node) in enumerate(tree.sampled)
-        Γnew[i] = backup_belief(tree, node)
-    end
-    append!(tree.Γ,Γnew)
-end
-
-
-##
 
 function backup!(tree, b_idx)
     Γ = tree.Γ
@@ -114,14 +47,14 @@ function backup!(tree, b_idx)
     O = observations(tree)
 
     # TODO: can easily cache, but we have bigger fish to fry atm
-    Γao = Matrix{Vector{Float64}}(undef, length(A), length(O))
+    Γao = Array{Float64,3}(undef, length(S), length(O), length(A))
 
-    for (a_idx, a) ∈ enumerate(A)
-        ba_idx = tree.b_children[b_idx][a_idx]
-        for (o_idx,o) ∈ enumerate(O)
-            bp_idx = tree.ba_children[ba_idx][o_idx]
+    for a ∈ A
+        ba_idx = tree.b_children[b_idx][a]
+        for o ∈ O
+            bp_idx = tree.ba_children[ba_idx][o]
             bp = tree.b[bp_idx]
-            Γao[a_idx, o_idx] = max_alpha_val(Γ, bp)
+            Γao[:,o,a] .= max_alpha_val(Γ, bp)
         end
     end
 
@@ -131,23 +64,7 @@ function backup!(tree, b_idx)
     best_action = first(A)
 
     for a ∈ A
-        for s ∈ S
-            rsa = reward(pomdp, s, a)
-            T = transition(pomdp, s, a)
-            tmp = 0.0
-            for sp ∈ S
-                Tsas′ = pdf(T,sp)
-                if Tsas′ > 0.
-                    Z = observation(pomdp, s, a, sp)
-                    for o ∈ O
-                        Zspao = pdf(Z, o)
-                        α_ao = Γao[a, o]
-                        tmp += Tsas′*Zspao*α_ao[sp]
-                    end
-                end
-            end
-            α_a[s] = rsa + γ*tmp
-        end
+        α_a = backup_a!(α_a, pomdp, a, Γao)
         Qba = dot(α_a, b)
         tree.Qa_lower[b_idx][a] = Qba
         if Qba > V

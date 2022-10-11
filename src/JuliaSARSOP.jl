@@ -2,6 +2,8 @@ module JuliaSARSOP
 
 using POMDPs
 using POMDPTools
+using SparseArrays
+using Tullio
 using DiscreteValueIteration
 using LinearAlgebra
 

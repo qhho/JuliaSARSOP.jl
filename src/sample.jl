@@ -65,21 +65,19 @@ function best_obs(tree::SARSOPTree, b_idx, ba_idx, ϵ, t)
     O = observations(tree)
     γ = discount(tree)
 
-    best_o_idx = 0
-    best_o = first(O)
+    best_o = 0
     best_gap = -Inf
 
-
-    for (o_idx,o) in enumerate(O)
-        poba = tree.poba[ba_idx][o_idx]
-        bp_idx = tree.ba_children[ba_idx][o_idx]
+    for o in O
+        poba = tree.poba[ba_idx][o]
+        bp_idx = tree.ba_children[ba_idx][o]
         gap = poba*(tree.V_upper[bp_idx] - tree.V_lower[bp_idx] - ϵ*γ^(-(t)))
         if gap > best_gap
             best_gap = gap
-            best_o_idx = o_idx
+            best_o = o
         end
     end
-    return best_o_idx
+    return best_o
 end
 
 obs_prob(tree::SARSOPTree, ba_idx::Int, o_idx::Int) = tree.poba[ba_idx][o_idx]
