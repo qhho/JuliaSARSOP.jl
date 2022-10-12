@@ -7,38 +7,23 @@ function init_root_value(tree::SARSOPTree, b::Vector{Float64})
     return value
 end
 
-function safe_div(a,b)
-    return if iszero(a) && iszero(b)
-        Inf
-    else
-        a/b
-    end
-end
-
-sparse_min_ratio(b_cache, v1, v2) = minimum(b_cache .= safe_div.(v1,v2))
-
-function min_ratio(v1, v2)
+function min_ratio(v1::AbstractVector, v2::AbstractSparseVector)
     min_ratio = Inf
     I,V = v2.nzind, v2.nzval
-    for (_i,i) ∈ enumerate(I)
-        ratio = v1[i] / V[_i]
+    for (a,b) ∈ zip(@view(v1[I]),V)
+        ratio = a / b
         ratio < min_ratio && (min_ratio = ratio)
     end
-    # for (a,b) ∈ zip(v1, v2)
-    #     ratio = a/b
-    #     ratio < min_ratio && (min_ratio = ratio)
-    # end
     return min_ratio
 end
 
 function upper_value(tree::SARSOPTree, b::AbstractVector)
-    b_cache = Vector{Float64}(undef, length(b))
     α_corner = tree.Vs_upper
     V_corner = dot(b, α_corner)
     V_upper = tree.V_upper
     v̂_min = Inf
     for b_idx ∈ tree.real
-        tree.b_pruned[b_idx] && continue
+        (tree.b_pruned[b_idx] || tree.is_terminal[b_idx]) && continue
         vint = V_upper[b_idx]
         bint = tree.b[b_idx]
         ϕ = min_ratio(b, bint)
@@ -49,10 +34,17 @@ function upper_value(tree::SARSOPTree, b::AbstractVector)
     return v̂_min
 end
 
+@inline sparse_dot(v1,v2) = dot(v1,v2)
+
+function sparse_dot(v1,v2::SparseVector)
+    I,V = v2.nzind, v2.nzval
+    return dot(@view(v1[I]), V)
+end
+
 function lower_value(tree::SARSOPTree, b::AbstractVector)
     MAX_VAL = -Inf
     for α in tree.Γ
-        new_val = dot(α, b)
+        new_val = sparse_dot(α, b)
         if new_val > MAX_VAL
             MAX_VAL = new_val
         end

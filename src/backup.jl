@@ -57,7 +57,6 @@ function backup_a!(α, pomdp::ModifiedSparseTabular, a, Γao)
         end
         α[s] = v
     end
-    # @tullio α[s] = T[sp,s]*Z[sp,o]*Γa[sp,o]
     @. α = R + γ*α
 end
 

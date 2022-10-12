@@ -107,69 +107,41 @@ function insert_root!(solver, tree::SARSOPTree, b)
     return tree
 end
 
-function update_and_push(tree::SARSOPTree, b_idx::Int, a, o)
-    b = tree.b[b_idx]
-    ba_idx = b_child(tree, b_idx, a)
-    bp_idx = -1
-    V_upper = Inf
-    V_lower = -Inf
-    if ba_idx === -1
-        ba_idx = add_action!(tree, b_idx, a)
-        b′ = update_and_shift(tree, b, a, o)
-        bp_idx, V_lower, V_upper = add_belief!(tree, b′, ba_idx, o)
-    else
-        bp_idx = ba_child(tree, ba_idx, o)
-        if bp_idx === -1
-            b′ = update_and_shift(tree, b, a, o)
-            bp_idx, V_lower, V_upper = add_belief!(tree, b′, ba_idx, o)
-        end
-    end
-    return bp_idx, V_lower, V_upper
-end
-
 function update(tree::SARSOPTree, b_idx::Int, a, o)
     b = tree.b[b_idx]
     ba_idx = tree.b_children[b_idx][a]
     bp_idx = tree.ba_children[ba_idx][o]
-    V_upper = upper_value(tree, tree.b[bp_idx])
-    V_lower = lower_value(tree, tree.b[bp_idx])
-    tree.V_upper[bp_idx] = V_upper
-    tree.V_lower[bp_idx] = V_lower
-    return bp_idx, V_upper, V_lower
-end
-
-function b_child(tree::SARSOPTree, b_idx::Int, a::Int)
-    return if checkbounds(Bool,tree.b_children[b_idx], a)
-        tree.b_children[b_idx][a]
+    V̲, V̄ = if tree.is_terminal[bp_idx]
+        0.,0.
     else
-        -1
+        lower_value(tree, tree.b[bp_idx]), upper_value(tree, tree.b[bp_idx])
     end
+    tree.V_lower[bp_idx] = V̲
+    tree.V_upper[bp_idx] = V̄
+    return bp_idx, V̲, V̄
 end
 
-# should be unnecessary
-function ba_child(tree::SARSOPTree, ba_idx::Int, o::Int)
-    return if checkbounds(Bool,tree.ba_children[ba_idx], o)
-        tree.ba_children[ba_idx][o]
-    else
-        -1
-    end
-end
-
-function add_belief!(tree::SARSOPTree, b, ba_idx::Int)
+function add_belief!(tree::SARSOPTree, b, ba_idx::Int, o)
     push!(tree.b, b)
     b_idx = length(tree.b)
     push!(tree.b_children, NO_CHILDREN)
     push!(tree.is_real, false)
     push!(tree.Qa_upper, Float64[])
     push!(tree.Qa_lower, Float64[])
-    V_upper = upper_value(tree, b)
-    V_lower = lower_value(tree, b)
-    term = iszero(tree.poba[ba_idx]) || is_terminal_belief(b, tree.terminal_s_idxs)
-    push!(tree.is_terminal, term)
-    push!(tree.V_upper, V_upper)
-    push!(tree.V_lower, V_lower)
+
+    terminal = iszero(tree.poba[ba_idx][o]) || is_terminal_belief(b, tree.terminal_s_idxs)
+    push!(tree.is_terminal, terminal)
+
+    V̲, V̄ = if terminal
+        0,0
+    else
+        lower_value(tree, b),upper_value(tree, b)
+    end
+
+    push!(tree.V_upper, V̄)
+    push!(tree.V_lower, V̲)
     push!(tree.b_pruned, true)
-    return b_idx, V_lower, V_upper
+    return b_idx, V̲, V̄
 end
 
 function add_action!(tree::SARSOPTree, b_idx::Int, a::Int)
@@ -200,15 +172,13 @@ function fill_populated!(tree::SARSOPTree, b_idx::Int)
     Qa_lower = tree.Qa_lower[b_idx]
     for a in ACT
         ba_idx = tree.b_children[b_idx][a]
+        tree.ba_pruned[ba_idx] && continue
         Rba = belief_reward(tree, b, a)
         Q̄ = Rba
         Q̲ = Rba
 
         for o in OBS
-            # bp_idx = last(tree.ba_children[ba_idx][o_idx])
-            # V̄ = tree.V_upper[bp_idx]
-            # V̲ = tree.V_lower[bp_idx]
-            bp_idx, V̄, V̲ = update(tree, b_idx, a, o)
+            bp_idx, V̲, V̄ = update(tree, b_idx, a, o)
             b′ = tree.b[bp_idx]
             po = tree.poba[ba_idx][o]
             Q̄ += γ*po*V̄
@@ -242,7 +212,6 @@ function fill_unpopulated!(tree::SARSOPTree, b_idx::Int)
         ba_idx = add_action!(tree, b_idx, a)
         ba_children = (n_b+1):(n_b+N_OBS)
         tree.ba_children[ba_idx] = ba_children
-        @assert ba_idx == b_children[a]
 
         n_b += N_OBS
 
@@ -262,9 +231,8 @@ function fill_unpopulated!(tree::SARSOPTree, b_idx::Int)
                 poba[o] = po
             end
 
-            bp_idx, V̲, V̄ = add_belief!(tree, bp, ba_idx)
+            bp_idx, V̲, V̄ = add_belief!(tree, bp, ba_idx, o)
 
-            @assert bp_idx == ba_children[o]
             Q̄ += γ*po*V̄
             Q̲ += γ*po*V̲
         end

@@ -1,6 +1,4 @@
 function prune!(solver::SARSOPSolver, tree::SARSOPTree)
-    # prune from B points that are provably suboptimal
-    # For node b in Tree,
     prune!(tree)
     prune_alpha!(tree, solver.delta)
 end
@@ -60,7 +58,8 @@ function intersection_distance(α1, α2, b)
     s = 0.0
     dot_sum = 0.0
     I,B = b.nzind, b.nzval
-    for (_i,i) ∈ enumerate(I)
+    for _i ∈ eachindex(I)
+        i = I[_i]
         diff = α1[i] - α2[i]
         s += abs2(diff)
         dot_sum += diff*B[_i]
