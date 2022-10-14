@@ -113,12 +113,12 @@ end
 function bin_value(tree::SARSOPTree, ba_idx::Int, value::Float64)
     bel = tree.b[ba_idx]
     ent = -bel'*log.(bel)
-    ent_idx = argmin(abs.(tree_ent_states.-ent))
+    ent_idx = argmin(abs.(tree.bin_ents .-ent))
     map = argmax(bel)
-    bin = tree_bin_values[map][ent_idx]
+    bin = tree.bins[map][ent_idx]
     bin[1] = (bin[1]*bin[2]+value)/(bin[2]+1)
     bin[2] += 1
-    push!(tree_bel_bin,ba_idx=>(map,ent_idx))
+    push!(tree.bel_bins,ba_idx=>(map,ent_idx))
     return bin[1]
 end
 
