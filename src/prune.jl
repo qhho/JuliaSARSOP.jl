@@ -99,3 +99,11 @@ function prune_alpha!(tree::SARSOPTree, δ)
     end
     deleteat!(Γ, pruned)
 end
+
+function unbin_value(tree::SARSOPTree, ba_idx::Int, value::Float64)
+    bindex = tree.bel_bins(ba_idx)
+    bin = tree.bins[bindex[1]][bindex[2]]
+    bin[1] = (bin[1]*bin[2]-value)/(bin[2]-1)
+    bin[2] -= 1
+    pop!(tree.bel_bins,ba_idx=>(map,ent_idx))
+end
