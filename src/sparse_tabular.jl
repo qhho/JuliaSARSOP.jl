@@ -102,3 +102,7 @@ POMDPTools.ordered_observations(pomdp::ModifiedSparseTabular) = axes(first(pomdp
 POMDPs.observations(pomdp::ModifiedSparseTabular) = ordered_observations(pomdp)
 
 POMDPs.discount(pomdp::ModifiedSparseTabular) = pomdp.discount
+
+n_states(pomdp::ModifiedSparseTabular) = length(states(pomdp))
+n_actions(pomdp::ModifiedSparseTabular) = length(actions(pomdp))
+n_observations(pomdp::ModifiedSparseTabular) = length(observations(pomdp))

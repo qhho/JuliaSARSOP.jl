@@ -27,11 +27,11 @@ function max_alpha_val(Γ, b)
     return max_α.alpha
 end
 
-function backup_a!(α, pomdp::ModifiedSparseTabular, a, Γao)
+function backup_a!(α, pomdp::ModifiedSparseTabular, cache::TreeCache, a, Γao)
     γ = discount(pomdp)
     R = @view pomdp.R[:,a]
     T_a = pomdp.T[a]
-    Z_a = pomdp.O[a]
+    Z_a = cache.Oᵀ[a]
     Γa = @view Γao[:,:,a]
 
     Tnz = nonzeros(T_a)
@@ -45,15 +45,12 @@ function backup_a!(α, pomdp::ModifiedSparseTabular, a, Γao)
             sp = Trv[sp_idx]
             p = Tnz[sp_idx]
             tmp = 0.0
-            for o ∈ observations(pomdp)
-                tmp += Z_a[sp,o]*Γa[sp, o]
+            for o_idx ∈ nzrange(Z_a, sp)
+                o = Zrv[o_idx]
+                po = Znz[o_idx]
+                tmp += po*Γa[sp, o]
             end
             v += tmp*p
-            # for o_idx ∈ nzrange(O_a, sp)
-            #     o = Zrv[o_idx]
-            #     po = Znz[o_idx]
-            #     tmp += po*Γ[a][sp]
-            # end
         end
         α[s] = v
     end
@@ -69,8 +66,7 @@ function backup!(tree, b_idx)
     A = actions(tree)
     O = observations(tree)
 
-    # TODO: can easily cache, but we have bigger fish to fry atm
-    Γao = Array{Float64,3}(undef, length(S), length(O), length(A))
+    Γao = tree.cache.Γ
 
     for a ∈ A
         ba_idx = tree.b_children[b_idx][a]
@@ -82,12 +78,12 @@ function backup!(tree, b_idx)
     end
 
     V = -Inf
-    α_a = zeros(Float64, length(S))
+    α_a = tree.cache.alpha # zeros(Float64, length(S))
     best_α = zeros(Float64, length(S))
     best_action = first(A)
 
     for a ∈ A
-        α_a = backup_a!(α_a, pomdp, a, Γao)
+        α_a = backup_a!(α_a, pomdp, tree.cache, a, Γao)
         Qba = dot(α_a, b)
         tree.Qa_lower[b_idx][a] = Qba
         if Qba > V

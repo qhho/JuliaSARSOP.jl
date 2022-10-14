@@ -23,7 +23,7 @@ struct SARSOPTree
     ba_pruned::BitVector
     real::Vector{Int} # b_idx
     is_real::BitVector
-    _pred_cache::Vector{Float64}
+    cache::TreeCache
 
     Γ::Vector{AlphaVec{Int}}
 end
@@ -31,7 +31,7 @@ end
 
 function SARSOPTree(solver, pomdp::POMDP)
     sparse_pomdp = ModifiedSparseTabular(pomdp)
-    ordered_s = ordered_states(pomdp)
+    cache = TreeCache(sparse_pomdp)
 
     upper_policy = solve(solver.init_upper, sparse_pomdp)
     corner_values = map(maximum, zip(upper_policy.alphas...))
@@ -58,7 +58,7 @@ function SARSOPTree(solver, pomdp::POMDP)
         BitVector(),
         Vector{Int}(),
         BitVector(),
-        Vector{Float64}(undef, length(ordered_s)),
+        cache,
         AlphaVec{Int}[]
     )
     return insert_root!(solver, tree, _initialize_belief(pomdp, initialstate(pomdp)))
@@ -215,7 +215,7 @@ function fill_unpopulated!(tree::SARSOPTree, b_idx::Int)
 
         n_b += N_OBS
 
-        predictor = mul!(tree._pred_cache, pomdp.T[a],b)
+        predictor = mul!(tree.cache.pred, pomdp.T[a],b)
         poba = zeros(Float64, N_OBS)
         Rba = belief_reward(tree, b, a)
 
@@ -224,7 +224,8 @@ function fill_unpopulated!(tree::SARSOPTree, b_idx::Int)
         push!(tree.poba, poba)
         for o ∈ O
             # belief update
-            bp = predictor .* @view(pomdp.O[a][:,o])
+            bp = predictor .* pomdp.O[a][:,o]
+            bp = sparse(bp)
             po = sum(bp)
             if po > 0.
                 bp ./= po
