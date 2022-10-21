@@ -17,8 +17,9 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t,
     fill_belief!(tree, b_idx)
     V̲, V̄ = tree.V_lower[b_idx], tree.V_upper[b_idx]
     γ = discount(tree)
-
-    V̂ = bin_value(tree,b_idx,V̄) #V̄ #TODO: BAD, binning method
+    @show V̄-bin_value(tree,b_idx,V̄)
+    # @show bin_value(tree,b_idx,V̄)
+    V̂ = V̄ #bin_value(tree,b_idx,V̄) #V̄ #TODO: BAD binning method
 
     if V̂ ≤ V̲ + sol.kappa*ϵ*γ^(-t) || (V̂ ≤ L && V̄ ≤ max(U, V̲ + ϵ*γ^(-t)))
         return
@@ -110,15 +111,15 @@ function get_LtUt(tree, ba_idx, Rba, L′, U′, op_idx)
     return Lt / poba, Ut / poba
 end
 
-function bin_value(tree::SARSOPTree, ba_idx::Int, value::Float64)
-    bel = tree.b[ba_idx]
+function bin_value(tree::SARSOPTree, b_idx::Int, value::Float64)
+    bel = tree.b[b_idx]
     ent = -bel'*log.(bel)
     ent_idx = argmin(abs.(tree.bin_ents .-ent))
     map = argmax(bel)
     bin = tree.bins[map][ent_idx]
     bin[1] = (bin[1]*bin[2]+value)/(bin[2]+1)
     bin[2] += 1
-    push!(tree.bel_bins,ba_idx=>(map,ent_idx))
+    push!(tree.bel_bins,b_idx=>(map,ent_idx))
     return bin[1]
 end
 

@@ -8,6 +8,7 @@ end
 function pruneSubTreeBa!(tree::SARSOPTree, ba_idx::Int)
     for (o,b_idx) in tree.ba_children[ba_idx]
         pruneSubTreeB!(tree, b_idx)
+        unbin_value(tree, b_idx)
     end
     tree.ba_pruned[ba_idx] = true
 end
@@ -100,10 +101,17 @@ function prune_alpha!(tree::SARSOPTree, δ)
     deleteat!(Γ, pruned)
 end
 
-function unbin_value(tree::SARSOPTree, ba_idx::Int, value::Float64)
-    bindex = tree.bel_bins(ba_idx)
+function unbin_value(tree::SARSOPTree, b_idx::Int)
+    value = tree.V_upper[b_idx]
+    bindex = tree.bel_bins[[x.first == b_idx for x in tree.bel_bins]]
     bin = tree.bins[bindex[1]][bindex[2]]
     bin[1] = (bin[1]*bin[2]-value)/(bin[2]-1)
     bin[2] -= 1
-    pop!(tree.bel_bins,ba_idx=>(map,ent_idx))
+    pop!(tree.bel_bins,tree.bel_bins[b_idx])
+end
+
+function unbin_values(tree::SARSOPTree, pruned::Vector{Int})
+    for ba_idx in pruned
+        unbin_value(tree,ba_idx)
+    end
 end
