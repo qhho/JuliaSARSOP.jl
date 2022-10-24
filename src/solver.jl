@@ -6,11 +6,11 @@ Base.@kwdef struct SARSOPSolver{UP,LOW} <: Solver
     max_time::Float64   = 1.0
     max_steps::Int      = typemax(Int)
     verbose::Bool       = true
-    init_lower::UP      = BlindLowerBound()
-    init_upper::LOW     = FastInformedBound()
+    init_lower::UP      = BlindLowerBound(bel_res = 1e-2)
+    init_upper::LOW     = FastInformedBound(bel_res = 1e-2)
 end
 
-function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP{S,A}) where {S,A}
+function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP)
     tree = SARSOPTree(solver, pomdp)
 
     t0 = time()
@@ -25,6 +25,6 @@ function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP{S,A}) where {S,A}
     return AlphaVectorPolicy(
         pomdp,
         getproperty.(tree.Γ, :alpha),
-        getproperty.(tree.Γ, :action)
+        ordered_actions(pomdp)[getproperty.(tree.Γ, :action)]
     )
 end

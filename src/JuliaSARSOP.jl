@@ -2,12 +2,14 @@ module JuliaSARSOP
 
 using POMDPs
 using POMDPTools
-using DiscreteValueIteration
+using SparseArrays
 using LinearAlgebra
 
 export SARSOPSolver, SARSOPTree
 
+include("sparse_tabular.jl")
 include("fib.jl")
+include("cache.jl")
 include("blind_lower.jl")
 include("alpha.jl")
 include("tree.jl")

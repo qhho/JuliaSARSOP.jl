@@ -1,19 +1,17 @@
 function prune!(solver::SARSOPSolver, tree::SARSOPTree)
-    # prune from B points that are provably suboptimal
-    # For node b in Tree,
     prune!(tree)
     prune_alpha!(tree, solver.delta)
 end
 
 function pruneSubTreeBa!(tree::SARSOPTree, ba_idx::Int)
-    for (o,b_idx) in tree.ba_children[ba_idx]
+    for b_idx in tree.ba_children[ba_idx]
         pruneSubTreeB!(tree, b_idx)
     end
     tree.ba_pruned[ba_idx] = true
 end
 
 function pruneSubTreeB!(tree::SARSOPTree, b_idx::Int)
-    for (a, ba_idx) in tree.b_children[b_idx]
+    for ba_idx in tree.b_children[b_idx]
         pruneSubTreeBa!(tree, ba_idx)
     end
     tree.b_pruned[b_idx] = true
@@ -25,16 +23,15 @@ function prune!(tree::SARSOPTree)
         if tree.b_pruned[b_idx]
             break
         else
-            # this `Vector{<:Pair}` shit is really annoying please GOD change it
-            Qa_upper = tree.Qa_upper[b_idx]#::Vector{<:Pair}
-            Qa_lower = tree.Qa_lower[b_idx]#::Vector{<:Pair}
+            Qa_upper = tree.Qa_upper[b_idx]
+            Qa_lower = tree.Qa_lower[b_idx]
             b_children = tree.b_children[b_idx]
             ba = tree.b_children[b_idx]
-            max_lower_bound = maximum(last, Qa_lower)
-            for (idx, (a, Qba)) ∈ enumerate(Qa_upper)
-                ba_idx = last(b_children[idx])
+            max_lower_bound = maximum(Qa_lower)
+            for (idx, Qba) ∈ enumerate(Qa_upper)
+                ba_idx = b_children[idx]
                 all_ba_pruned = true
-                if !tree.ba_pruned[ba_idx] && last(Qa_upper[idx]) < max_lower_bound
+                if !tree.ba_pruned[ba_idx] && Qa_upper[idx] < max_lower_bound
                     pruneSubTreeBa!(tree, ba_idx)
                 else
                     all_ba_pruned = false
@@ -60,10 +57,12 @@ end
 function intersection_distance(α1, α2, b)
     s = 0.0
     dot_sum = 0.0
-    @inbounds for i ∈ eachindex(α1, α2, b)
+    I,B = b.nzind, b.nzval
+    for _i ∈ eachindex(I)
+        i = I[_i]
         diff = α1[i] - α2[i]
         s += abs2(diff)
-        dot_sum += diff*b[i]
+        dot_sum += diff*B[_i]
     end
     return dot_sum / sqrt(s)
 end
