@@ -1,12 +1,12 @@
 # TODO
 
-- [ ] Bounds initialization
+- [x] Bounds initialization
   - [x] Upper bound
     - [x] Fast Informed Bound
     - [x] $V_{MDP}$
     - [x] SAWTOOTH
   - [x] Lower Bound (BAWS)
-- [ ] Bounds Updates
+- [x] Bounds Updates
   - [x] Upper Bound
   - [x] Lower bound (in `backup!`)
 - [x] Pruning

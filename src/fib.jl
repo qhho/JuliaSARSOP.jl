@@ -68,8 +68,6 @@ function update!(𝒫::ModifiedSparseTabular, M::FastInformedBound, Γ, 𝒮, �
         nz = nonzeros(T_a)
         rv = rowvals(T_a)
 
-        # nzO = nonzeros(O_a)
-        # rvO = rowvals(O_a)
         for s ∈ 𝒮
             rsa = R[s,a]
 
@@ -101,6 +99,79 @@ function update!(𝒫::ModifiedSparseTabular, M::FastInformedBound, Γ, 𝒮, �
         copyto!(Γ[a], α_a)
     end
 end
+
+#=
+function _update!(𝒫::ModifiedSparseTabular, M::FastInformedBound, Γ, 𝒮, 𝒜, 𝒪)
+    (;R,T,O) = 𝒫
+    γ = discount(𝒫)
+    residuals = M.residuals
+
+    for a ∈ 𝒜
+        α_a = M.α_tmp
+        T_a = T[a]
+        Z_a = O[a]
+        Tnz = nonzeros(T_a)
+        Trv = rowvals(T_a)
+
+        for s ∈ 𝒮
+            rsa = R[s,a]
+
+            if isinf(rsa)
+                α_a[s] = -Inf
+            elseif isterminal(𝒫,s)
+                α_a[s] = 0.
+            else
+                tmp = 0.0
+                for o ∈ 𝒪
+                    Vmax = -Inf
+                    for α′ ∈ Γ
+                        Vb′ = sparse_col_mul_reduce(Z_a, o, T_a, s, α′)
+                        Vb′ > Vmax && (Vmax = Vb′)
+                    end
+                    tmp += Vmax
+                end
+                α_a[s] = rsa + γ*tmp
+            end
+        end
+        res = bel_res(Γ[a], α_a)
+        residuals[a] = res
+        copyto!(Γ[a], α_a)
+    end
+end
+
+function sparse_col_mul_reduce(A::SparseMatrixCSC, a_col, B::SparseMatrixCSC, b_col, coeff::Vector)
+    Anzr = nzrange(A, a_col)
+    Anzval = @view nonzeros(A)[Anzr]
+    Anzind = @view rowvals(A)[Anzr]
+    mx = length(Anzind)
+
+    Bnzr = nzrange(B, b_col)
+    Bnzval = @view nonzeros(B)[Bnzr]
+    Bnzind = @view rowvals(B)[Bnzr]
+    my = length(Bnzind)
+
+    return _binary_mul_reduce(mx,my, Anzind, Anzval, Bnzind, Bnzval, coeff)
+end
+
+function _binary_mul_reduce(mx::Int, my::Int, xnzind, xnzval, ynzind, ynzval, coeff)
+    # f(nz, nz) -> nz, f(z, nz) -> z, f(nz, z) ->  z
+    # require_one_based_indexing(xnzind, ynzind, xnzval, ynzval, rind, rval)
+    ir = 0; ix = 1; iy = 1; v = 0.
+    while ix ≤ mx && iy ≤ my
+        jx = xnzind[ix]
+        jy = ynzind[iy]
+        if jx === jy
+            v += xnzval[ix]*ynzval[iy]*coeff[jx]
+            ir += 1; ix += 1; iy += 1
+        elseif jx < jy
+            ix += 1
+        else
+            iy += 1
+        end
+    end
+    return v
+end
+=#
 
 function POMDPs.solve(sol::FastInformedBound, pomdp::POMDP)
     t0 = time()

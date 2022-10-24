@@ -133,9 +133,9 @@ function add_belief!(tree::SARSOPTree, b, ba_idx::Int, o)
     push!(tree.is_terminal, terminal)
 
     V̲, V̄ = if terminal
-        0,0
+        0., 0.
     else
-        lower_value(tree, b),upper_value(tree, b)
+        lower_value(tree, b), upper_value(tree, b)
     end
 
     push!(tree.V_upper, V̄)
@@ -214,8 +214,7 @@ function fill_unpopulated!(tree::SARSOPTree, b_idx::Int)
         tree.ba_children[ba_idx] = ba_children
 
         n_b += N_OBS
-
-        predictor = mul!(tree.cache.pred, pomdp.T[a],b)
+        pred = mul!(tree.cache.pred, pomdp.T[a],b)
         poba = zeros(Float64, N_OBS)
         Rba = belief_reward(tree, b, a)
 
@@ -224,10 +223,10 @@ function fill_unpopulated!(tree::SARSOPTree, b_idx::Int)
         push!(tree.poba, poba)
         for o ∈ O
             # belief update
-            bp = predictor .* pomdp.O[a][:,o]
-            bp = sparse(bp)
+            bp = corrector(pomdp, pred, a, o)
             po = sum(bp)
             if po > 0.
+                # bp.nzval ./= po # (non-allocating, but makes the whole thing slower for some reason)
                 bp ./= po
                 poba[o] = po
             end

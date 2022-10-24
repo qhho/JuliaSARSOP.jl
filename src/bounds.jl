@@ -34,17 +34,10 @@ function upper_value(tree::SARSOPTree, b::AbstractVector)
     return v̂_min
 end
 
-@inline sparse_dot(v1,v2) = dot(v1,v2)
-
-function sparse_dot(v1,v2::SparseVector)
-    I,V = v2.nzind, v2.nzval
-    return dot(@view(v1[I]), V)
-end
-
 function lower_value(tree::SARSOPTree, b::AbstractVector)
     MAX_VAL = -Inf
     for α in tree.Γ
-        new_val = sparse_dot(α, b)
+        new_val = dot(α, b)
         if new_val > MAX_VAL
             MAX_VAL = new_val
         end
