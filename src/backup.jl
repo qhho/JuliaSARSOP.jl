@@ -1,19 +1,3 @@
-function belief_norm(b::Vector{Float64}, b′::Vector{Float64}, terminals, not_terminals)
-    #TODO: fix this nonsense
-    if sum(b′[not_terminals]) != 0.
-        if !isempty(terminals)
-            b′[not_terminals] = b′[not_terminals] / (sum(b′[not_terminals]) / (1. - sum(b[terminals]) - sum(b′[terminals])))
-            b′[terminals] += b[terminals]
-        else
-            b′[not_terminals] /= sum(b′[not_terminals])
-        end
-    else
-        b′[terminals] += b[terminals]
-        b′[terminals] /= sum(b′[terminals])
-    end
-    return b′
-end
-
 function max_alpha_val(Γ, b)
     max_α = first(Γ)
     max_val = -Inf

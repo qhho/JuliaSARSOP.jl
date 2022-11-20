@@ -1,4 +1,4 @@
-Base.@kwdef struct SARSOPSolver{UP,LOW} <: Solver
+Base.@kwdef struct SARSOPSolver{LOW,UP} <: Solver
     epsilon::Float64    = 0.5
     precision::Float64  = 1e-3
     kappa::Float64      = 0.5
@@ -6,8 +6,9 @@ Base.@kwdef struct SARSOPSolver{UP,LOW} <: Solver
     max_time::Float64   = 1.0
     max_steps::Int      = typemax(Int)
     verbose::Bool       = true
-    init_lower::UP      = BlindLowerBound(bel_res = 1e-2)
-    init_upper::LOW     = FastInformedBound(bel_res = 1e-2)
+    init_lower::LOW     = BlindLowerBound(bel_res = 1e-2)
+    init_upper::UP      = FastInformedBound(bel_res=1e-2)
+    prunethresh::Float64= 0.10
 end
 
 function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP)
@@ -18,7 +19,6 @@ function POMDPs.solve(solver::SARSOPSolver, pomdp::POMDP)
     while time()-t0 < solver.max_time && root_diff(tree) > solver.precision
         sample!(solver, tree)
         backup!(tree)
-        # update_upper_bounds!(tree)
         prune!(solver, tree)
         iterations += 1
     end
