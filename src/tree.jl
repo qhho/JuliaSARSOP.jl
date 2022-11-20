@@ -1,3 +1,9 @@
+mutable struct PruneData
+    last_Γ_size::Int
+    last_B_size::Int
+    prune_threshold::Float64
+end
+
 struct SARSOPTree
     pomdp::ModifiedSparseTabular
 
@@ -24,6 +30,7 @@ struct SARSOPTree
     real::Vector{Int} # b_idx
     is_real::BitVector
     cache::TreeCache
+    prune_data::PruneData
 
     Γ::Vector{AlphaVec{Int}}
 end
@@ -59,6 +66,7 @@ function SARSOPTree(solver, pomdp::POMDP)
         Vector{Int}(),
         BitVector(),
         cache,
+        PruneData(0,0,solver.prunethresh),
         AlphaVec{Int}[]
     )
     return insert_root!(solver, tree, _initialize_belief(pomdp, initialstate(pomdp)))
@@ -90,8 +98,9 @@ function insert_root!(solver, tree::SARSOPTree, b)
     Γ_lower = solve(solver.init_lower, pomdp)
     for (α,a) ∈ alphapairs(Γ_lower)
         new_val = dot(α, b)
-        push!(tree.Γ, AlphaVec(α, a, [1], [new_val]))
+        push!(tree.Γ, AlphaVec(α, a))
     end
+    tree.prune_data.last_Γ_size = length(tree.Γ)
 
     push!(tree.b, b)
     push!(tree.b_children, NO_CHILDREN)
@@ -214,7 +223,7 @@ function fill_unpopulated!(tree::SARSOPTree, b_idx::Int)
         tree.ba_children[ba_idx] = ba_children
 
         n_b += N_OBS
-        pred = mul!(tree.cache.pred, pomdp.T[a],b)
+        pred = dropzeros!(mul!(tree.cache.pred, pomdp.T[a],b))
         poba = zeros(Float64, N_OBS)
         Rba = belief_reward(tree, b, a)
 
@@ -226,8 +235,7 @@ function fill_unpopulated!(tree::SARSOPTree, b_idx::Int)
             bp = corrector(pomdp, pred, a, o)
             po = sum(bp)
             if po > 0.
-                # bp.nzval ./= po # (non-allocating, but makes the whole thing slower for some reason)
-                bp ./= po
+                bp.nzval ./= po
                 poba[o] = po
             end
 
