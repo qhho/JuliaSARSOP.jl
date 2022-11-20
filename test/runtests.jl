@@ -7,6 +7,7 @@ using POMDPs
 import SARSOP
 using SparseArrays
 using RockSample
+using Combinatorics
 
 # lil bit of testing type piracy
 JSOP.SARSOPTree(pomdp::POMDP) = JSOP.SARSOPTree(SARSOPSolver(), pomdp)
@@ -18,6 +19,8 @@ JSOP.SARSOPTree(pomdp::POMDP) = JSOP.SARSOPTree(SARSOPSolver(), pomdp)
     @test SARSOPTree(pomdp) isa SARSOPTree
     # @test policy = solve(solver, pomdp)
 end
+
+include("sparse.jl")
 
 include("sample.jl")
 
@@ -35,7 +38,6 @@ include("tree.jl")
         iterations += 1
         JSOP.sample!(solver, tree)
         JSOP.backup!(tree)
-        # JSOP.update_upper_bounds!(tree)
         JSOP.prune!(solver, tree)
     end
     @test isapprox(tree.V_lower[1], 19.37; atol=1e-1)
@@ -57,7 +59,6 @@ end
         iterations += 1
         JSOP.sample!(solver, tree)
         JSOP.backup!(tree)
-        # JSOP.update_upper_bounds!(tree)
         JSOP.prune!(solver, tree)
     end
     @test isapprox(tree.V_lower[1], -16.3; atol=1e-2)
@@ -79,7 +80,6 @@ end
         iterations += 1
         JSOP.sample!(solver, tree)
         JSOP.backup!(tree)
-        # JSOP.update_upper_bounds!(tree)
         JSOP.prune!(solver, tree)
     end
     # @test isapprox(tree.V_lower[1], -16.3; atol=1e-2)
