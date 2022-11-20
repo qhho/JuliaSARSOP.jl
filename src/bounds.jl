@@ -7,14 +7,66 @@ function init_root_value(tree::SARSOPTree, b::Vector{Float64})
     return value
 end
 
-function min_ratio(v1::AbstractVector, v2::AbstractSparseVector)
+# function _min_ratio(v1, v2)
+#     return if v1 isa SparseVector
+#         r1 = min_ratio(v1, v2)
+#         r2 = sparse_min_ratio(v1, v2)
+#         if r1 ≠ r2
+#             @show v1
+#             @show v2
+#             @show r1
+#             @show r2
+#             error()
+#         end
+#         r2
+#     else
+#         min_ratio(v1, v2)
+#     end
+# end
+
+@inline function min_ratio(v1::AbstractVector, v2::AbstractSparseVector)
     min_ratio = Inf
     I,V = v2.nzind, v2.nzval
-    for (a,b) ∈ zip(@view(v1[I]),V)
-        ratio = a / b
+    @inbounds for _i ∈ eachindex(I)
+        i = I[_i]
+        ratio = v1[i] / V[_i] # calling getindex on sparsevector -> NOT GOOD
         ratio < min_ratio && (min_ratio = ratio)
     end
     return min_ratio
+end
+
+function min_ratio(x::AbstractSparseVector, y::AbstractSparseVector)
+    xnzind = SparseArrays.nonzeroinds(x)
+    xnzval = nonzeros(x)
+    ynzind = SparseArrays.nonzeroinds(y)
+    ynzval = nonzeros(y)
+    mx = length(xnzind)
+    my = length(ynzind)
+    return _sparse_min_ratio(mx, my, xnzind, xnzval, ynzind, ynzval)
+end
+
+
+#=
+This speeds things up nicely and passes all tests but I'm not
+=#
+@inline function _sparse_min_ratio(mx::Int, my::Int, xnzind, xnzval, ynzind, ynzval)
+    ir = 0; ix = 1; iy = 1
+    min_ratio = Inf
+    @inbounds while ix ≤ mx && iy ≤ my
+        jx = xnzind[ix]
+        jy = ynzind[iy]
+
+        if jx == jy
+            v = xnzval[ix]/ynzval[iy]
+            v < min_ratio && (min_ratio = v)
+            ix += 1; iy += 1
+        elseif jx < jy # x has nonzero value where y has zero value
+            ix += 1
+        else
+            return zero(eltype(ynzval))
+        end
+    end
+    return ix ≥ mx && iy ≤ my ? zero(eltype(ynzval)) : min_ratio
 end
 
 function upper_value(tree::SARSOPTree, b::AbstractVector)
