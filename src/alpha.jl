@@ -1,8 +1,6 @@
 struct AlphaVec{A} <: AbstractVector{Float64}
     alpha::Vector{Float64}
     action::A
-    witnesses::Vector{Int}
-    value_at_witnesses::Vector{Float64} #lower bound value
 end
 
 @inline Base.length(v::AlphaVec) = length(v.alpha)

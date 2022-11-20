@@ -78,7 +78,7 @@ function update!(𝒫::ModifiedSparseTabular, M::FastInformedBound, Γ, 𝒮, �
             else
                 tmp = 0.0
                 for o ∈ 𝒪
-                    O_ao = @view O_a[:,o]
+                    O_ao = @view O_a[:,o] # FIXME: slow sparse indexing for inner O_ao[sp]
                     Vmax = -Inf
                     for α′ ∈ Γ
                         Vb′ = 0.0
