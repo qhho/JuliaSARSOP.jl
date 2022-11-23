@@ -1,28 +1,4 @@
-function init_root_value(tree::SARSOPTree, b::Vector{Float64})
-    corner_values = tree.Vs_upper
-    value = 0.0
-    for i in 1:length(corner_values)
-        value += corner_values[i] * b[i]
-    end
-    return value
-end
-
-# function _min_ratio(v1, v2)
-#     return if v1 isa SparseVector
-#         r1 = min_ratio(v1, v2)
-#         r2 = sparse_min_ratio(v1, v2)
-#         if r1 ≠ r2
-#             @show v1
-#             @show v2
-#             @show r1
-#             @show r2
-#             error()
-#         end
-#         r2
-#     else
-#         min_ratio(v1, v2)
-#     end
-# end
+init_root_value(tree::SARSOPTree, b::AbstractVector) = dot(tree.Vs_upper, b)
 
 @inline function min_ratio(v1::AbstractVector, v2::AbstractSparseVector)
     min_ratio = Inf
@@ -45,10 +21,6 @@ function min_ratio(x::AbstractSparseVector, y::AbstractSparseVector)
     return _sparse_min_ratio(mx, my, xnzind, xnzval, ynzind, ynzval)
 end
 
-
-#=
-This speeds things up nicely and passes all tests but I'm not
-=#
 @inline function _sparse_min_ratio(mx::Int, my::Int, xnzind, xnzval, ynzind, ynzval)
     ir = 0; ix = 1; iy = 1
     min_ratio = Inf
@@ -95,29 +67,6 @@ function lower_value(tree::SARSOPTree, b::AbstractVector)
         end
     end
     return MAX_VAL
-end
-
-function update_upper_bound!(tree::SARSOPTree, b_idx::Int)
-    b = tree.b[b_idx]
-    b_children = tree.b_children[b_idx]
-    for a in tree.actions
-        Rba = belief_reward(tree, b, a)
-        Q̄ = Rba
-        ba_idx = b_children[a_idx]
-        for o in observations(tree)
-            _, V̄, _ = update(tree, b_idx, a, o)
-            po = tree.poba[ba_idx][o]
-            Q̄ += tree._discount*po*V̄
-        end
-        tree.Qa_upper[b_idx][a_idx] = a => Q̄
-    end
-    tree.V_upper[b_idx] = maximum(last, tree.Qa_upper[b_idx])
-end
-
-function update_upper_bounds!(tree::SARSOPTree)
-    for b_sampled in reverse(tree.sampled)
-        update_upper_bound!(tree, b_sampled)
-    end
 end
 
 root_diff(tree) = tree.V_upper[1] - tree.V_lower[1]

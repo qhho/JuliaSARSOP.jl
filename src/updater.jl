@@ -1,6 +1,4 @@
-function is_terminal_belief(b, terminal_s_idxs::Vector{Int})
-    return sum(b[terminal_s_idxs]) ≈ 1.0
-end
+is_terminal_belief(b, is_terminal_s) = dot(b, is_terminal_s) ≈ 1.0
 
 function predictor(pomdp::ModifiedSparseTabular, b::SparseVector, a::Int)
     return predictor!(similar(b), pomdp, b, a)

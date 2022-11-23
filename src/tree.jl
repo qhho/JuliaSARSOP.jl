@@ -21,7 +21,7 @@ struct SARSOPTree
 
     _discount::Float64
     is_terminal::BitVector
-    terminal_s_idxs::Vector{Int}
+    is_terminal_s::SparseVector{Bool, Int}
 
     #do we need both b_pruned and ba_pruned? b_pruned might be enough
     sampled::Vector{Int} # b_idx
@@ -42,7 +42,6 @@ function SARSOPTree(solver, pomdp::POMDP)
 
     upper_policy = solve(solver.init_upper, sparse_pomdp)
     corner_values = map(maximum, zip(upper_policy.alphas...))
-    terminals = findall(sparse_pomdp.isterminal)
 
     tree = SARSOPTree(
         sparse_pomdp,
@@ -59,7 +58,7 @@ function SARSOPTree(solver, pomdp::POMDP)
         Vector{Float64}[],
         discount(pomdp),
         BitVector(),
-        terminals,
+        sparse_pomdp.isterminal,
         Int[],
         BitVector(),
         BitVector(),
@@ -111,7 +110,7 @@ function insert_root!(solver, tree::SARSOPTree, b)
     push!(tree.Qa_upper, Float64[])
     push!(tree.Qa_lower, Float64[])
     push!(tree.b_pruned, false)
-    push!(tree.is_terminal, is_terminal_belief(b, tree.terminal_s_idxs))
+    push!(tree.is_terminal, is_terminal_belief(b, tree.is_terminal_s))
     fill_belief!(tree, 1)
     return tree
 end
@@ -138,7 +137,7 @@ function add_belief!(tree::SARSOPTree, b, ba_idx::Int, o)
     push!(tree.Qa_upper, Float64[])
     push!(tree.Qa_lower, Float64[])
 
-    terminal = iszero(tree.poba[ba_idx][o]) || is_terminal_belief(b, tree.terminal_s_idxs)
+    terminal = iszero(tree.poba[ba_idx][o]) || is_terminal_belief(b, tree.is_terminal_s)
     push!(tree.is_terminal, terminal)
 
     V̲, V̄ = if terminal

@@ -1,19 +1,8 @@
-"""
-TODO:
-Currently dispatching on `SparseTabularPOMDP` with
-transposed transition matrix.
-
-Either we change POMDPTools to have transition matrix T[s′,s] or
-we create new type here with this change.
-
-This way, anyone using internal methods dispatching on `SparseTabularPOMDP`
-won't get wrong results.
-"""
 struct ModifiedSparseTabular <: POMDP{Int,Int,Int}
     T::Vector{SparseMatrixCSC{Float64, Int64}} # T[a][sp, s]
     R::Array{Float64, 2} # R[s,a]
     O::Vector{SparseMatrixCSC{Float64, Int64}} # O[a][sp, o]
-    isterminal::BitVector
+    isterminal::SparseVector{Bool, Int}
     initialstate::SparseVector{Float64, Int}
     discount::Float64
 end
